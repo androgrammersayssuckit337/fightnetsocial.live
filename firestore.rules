@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 50 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role in ['fighter', 'fan', 'sponsor'] &&
+             (data.createdAt is timestamp || data.createdAt is number) &&
+             (data.get('profileImageUrl', '') is string && data.get('profileImageUrl', '').size() <= 1000) &&
+             (data.get('bio', '') is string && data.get('bio', '').size() <= 1000) &&
+             (data.get('record', '') is string && data.get('record', '').size() <= 50) &&
+             (data.get('gym', '') is string && data.get('gym', '').size() <= 200) &&
+             (data.get('isPro', false) is bool);
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['authorId', 'content', 'createdAt']) &&
+             data.authorId is string && data.authorId == request.auth.uid &&
+             data.content is string && data.content.size() <= 2000 &&
+             (data.createdAt is timestamp || data.createdAt is number) &&
+             (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 1000) &&
+             (data.get('mediaType', '') in ['', 'video', 'image']) &&
+             (data.get('likesCount', 0) is number);
+    }
+
+    function isValidSponsorshipApplication(data) {
+      return data.keys().hasAll(['fighterId', 'status', 'pitch', 'createdAt']) &&
+             data.fighterId is string && data.fighterId == request.auth.uid &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.pitch is string && data.pitch.size() <= 2000 &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
+    // Collections
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
+      allow update: if isOwner(userId) && isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt']) &&
+                    incoming().email == existing().email &&
+                    incoming().role == existing().role;
+    }
+
+    match /posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
+      allow update: if isSignedIn() && existing().authorId == request.auth.uid && isValidPost(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'mediaType', 'createdAt']) &&
+                    incoming().authorId == existing().authorId;
+      allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+    }
+
+    match /sponsorships/{applicationId} {
+      allow get: if isSignedIn() && isValidId(applicationId) && (existing().fighterId == request.auth.uid || existing().status == 'pending'); // sponsors might read
+      allow list: if isSignedIn() && resource.data.fighterId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(applicationId) && isValidSponsorshipApplication(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
+      // Only updating pitch if pending
+      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidSponsorshipApplication(incoming()) &&
+                    existing().status == 'pending' &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['pitch', 'createdAt']) &&
+                    incoming().fighterId == existing().fighterId &&
+                    incoming().status == existing().status;
+    }
+  }
+}
