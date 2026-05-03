@@ -2,10 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  doc, 
+  getDoc, 
+  serverTimestamp, 
+  updateDoc, 
+  increment as firestoreIncrement 
+} from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
+import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
 
 interface Post {
   id: string;
@@ -17,6 +29,9 @@ interface Post {
   createdAt: number;
   authorName?: string;
   authorImage?: string;
+  authorRole?: string;
+  authorRecord?: string;
+  authorGym?: string;
 }
 
 export function FeedPage() {
@@ -46,7 +61,14 @@ export function FeedPage() {
            const userDoc = await getDoc(doc(db, 'users', post.authorId));
            if (userDoc.exists()) {
              const userData = userDoc.data();
-             return { ...post, authorName: userData.displayName, authorImage: userData.profileImageUrl };
+             return { 
+               ...post, 
+               authorName: userData.displayName, 
+               authorImage: userData.profileImageUrl,
+               authorRole: userData.role,
+               authorRecord: userData.record,
+               authorGym: userData.gym
+             };
            }
          } catch(e) { console.error('Failed to fetch author', e) }
          return post;
@@ -129,45 +151,60 @@ export function FeedPage() {
     }
   };
 
+  const handleLike = async (postId: string) => {
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        likesCount: firestoreIncrement(1)
+      });
+    } catch (error) {
+      console.error("Like failed:", error);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-[#0a0a0a]">
       {/* Feed Section */}
-      <section className="flex-1 border-r border-[#222] p-4 md:p-6 space-y-6 overflow-y-auto">
+      <section className="flex-1 border-r border-white/5 p-4 md:p-8 space-y-8 overflow-y-auto scrollbar-hide">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-bold uppercase italic text-white leading-none">Top Prospect Feed</h2>
+          <div className="flex items-center gap-3">
+             <div className="w-1.5 h-8 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.5)]"></div>
+             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter">Pro-Circuit Feed</h2>
+          </div>
           <div className="flex space-x-2">
-            <span className="px-2 py-0.5 bg-zinc-800 text-[10px] text-zinc-400 rounded">Recent</span>
-            <span className="px-2 py-0.5 bg-[#E31837] text-[10px] text-white rounded">Trending</span>
+             <div className="px-3 py-1 bg-zinc-900 border border-white/5 text-[10px] font-black uppercase text-zinc-500 rounded-sm">Global</div>
+             <div className="px-3 py-1 bg-white text-black text-[10px] font-black uppercase rounded-sm">Hot</div>
           </div>
         </div>
 
         {userProfile?.role === 'fighter' && (
-          <form onSubmit={handleCreatePost} className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-            <div className="flex gap-4">
-              <img src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=111&color=fff`} alt="" className="w-8 h-8 rounded-full" />
+          <form onSubmit={handleCreatePost} className="bg-zinc-950 border border-white/10 rounded-xl p-6 shadow-2xl relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="flex gap-5 relative z-10">
+              <img src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=111&color=fff`} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover" />
               <div className="flex-1">
                 <textarea 
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="Share your journey, highlight, or call out..."
-                  className="w-full bg-transparent text-sm text-white placeholder-zinc-500 focus:outline-none resize-none mb-2"
-                  rows={2}
+                  placeholder="Drop a highlight, training clip, or career news..."
+                  className="w-full bg-transparent text-lg font-medium text-white placeholder-zinc-700 underline-offset-8 decoration-[#E31837]/20 focus:outline-none resize-none mb-4 min-h-[100px]"
                 />
                 
                 {uploadProgress > 0 && uploadProgress < 100 && (
-                   <div className="w-full bg-zinc-800 h-1 rounded-full mb-3 overflow-hidden">
-                     <div className="bg-[#E31837] h-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+                   <div className="w-full bg-zinc-900 h-1.5 rounded-full mb-4 overflow-hidden">
+                     <div className="bg-[#E31837] h-full transition-all shadow-[0_0_10px_#E31837]" style={{ width: `${uploadProgress}%` }}></div>
                    </div>
                 )}
 
-                <div className="flex justify-between items-center border-t border-zinc-800 pt-2">
-                   <div className="flex items-center gap-4">
+                <div className="flex justify-between items-center border-t border-white/5 pt-4">
+                   <div className="flex items-center gap-6">
                       <button 
                         type="button" 
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-zinc-500 hover:text-white text-[10px] font-bold uppercase flex items-center transition-colors"
+                        className="text-zinc-500 hover:text-[#E31837] text-[10px] font-black uppercase flex items-center gap-2 transition-all group/btn"
                       >
-                        + Attach Media
+                        <Camera className="w-4 h-4" />
+                        <span>Add Tape / Snap</span>
                       </button>
                       <input 
                         type="file" 
@@ -176,7 +213,9 @@ export function FeedPage() {
                         accept="video/*,image/*"
                         onChange={(e) => {
                           if (e.target.files?.[0]) {
-                            setNewPostContent(prev => prev || `Check out my latest ${e.target.files?.[0].type.includes('video') ? 'tape' : 'shot'}`);
+                            const name = e.target.files[0].name;
+                            const isVid = e.target.files[0].type.includes('video');
+                            setNewPostContent(prev => prev || `Fresh ${isVid ? 'tape' : 'shot'}: ${name}`);
                           }
                         }}
                       />
@@ -184,9 +223,9 @@ export function FeedPage() {
                    <button 
                     type="submit" 
                     disabled={isSubmitting || (!newPostContent.trim() && !fileInputRef.current?.files?.[0])}
-                    className="bg-white text-black px-4 py-1 font-bold uppercase tracking-wider text-[10px] rounded hover:bg-zinc-200 disabled:opacity-50 transition-colors"
+                    className="bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
                    >
-                     {isSubmitting ? 'Posting...' : 'Post'}
+                     {isSubmitting ? 'Locking in...' : 'Publish'}
                    </button>
                 </div>
               </div>
@@ -194,147 +233,213 @@ export function FeedPage() {
           </form>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-12">
           {posts.map(post => (
-            <div key={post.id} className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-              <div className="p-4 border-b border-zinc-800">
-                 <div className="flex items-center gap-3">
-                   <img src={post.authorImage || `https://ui-avatars.com/api/?name=${post.authorName}&background=000&color=fff`} className="w-8 h-8 rounded-full border border-zinc-700" alt="" />
+            <div key={post.id} className="group relative bg-[#0a0a0a] animate-in fade-in slide-in-from-bottom-8 duration-700">
+              {/* Post Header */}
+              <div className="flex items-start justify-between mb-4">
+                 <div className="flex items-center gap-4">
+                   <div className="relative">
+                      <img src={post.authorImage || `https://ui-avatars.com/api/?name=${post.authorName}&background=000&color=fff`} className="w-12 h-12 rounded-full border-2 border-white/5 object-cover" alt="" />
+                      {post.authorRole === 'fighter' && (
+                        <div className="absolute -bottom-1 -right-1 bg-[#E31837] text-white p-0.5 rounded-full border-2 border-black">
+                          <Trophy className="w-3 h-3" />
+                        </div>
+                      )}
+                   </div>
                    <div>
-                     <h3 className="font-bold text-white text-sm leading-none mb-1">{post.authorName || 'Unknown Fighter'}</h3>
-                     <p className="text-[10px] text-zinc-500 font-mono uppercase">{formatDistanceToNow(post.createdAt)} ago</p>
+                     <div className="flex items-center gap-2">
+                        <h3 className="font-black text-white text-base tracking-tight uppercase italic">{post.authorName}</h3>
+                        {post.authorRole === 'fighter' && post.authorRecord && (
+                          <span className="text-[10px] bg-red-900/20 text-[#E31837] px-1.5 py-0.5 font-black rounded uppercase">{post.authorRecord}</span>
+                        )}
+                     </div>
+                     <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(post.createdAt)} ago</span>
+                        {post.authorGym && (
+                          <span className="flex items-center gap-1 text-[10px] text-zinc-700 font-bold uppercase">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {post.authorGym}
+                          </span>
+                        )}
+                     </div>
                    </div>
                  </div>
+                 <button className="text-zinc-800 hover:text-white transition-colors">
+                   <Share2 className="w-4 h-4" />
+                 </button>
               </div>
                
-              <div className="p-4">
-                 <p className="text-sm text-zinc-300 font-medium whitespace-pre-wrap">{post.content}</p>
+              <div className="mb-6">
+                 <p className="text-zinc-200 text-lg md:text-xl font-medium leading-relaxed tracking-tight whitespace-pre-wrap">{post.content}</p>
               </div>
 
                {/* Media Display */}
-               {(post.mediaUrl || post.id === 'demo1') && (
-                  <div className="relative aspect-video bg-black flex items-center justify-center border-y border-zinc-800">
-                    <div className="absolute inset-0 bg-cover bg-center opacity-60" style={{ backgroundImage: post.mediaUrl ? `url(${post.mediaUrl})` : 'url(https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=800&q=80)' }} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    
-                    {post.mediaType === 'video' || post.id === 'demo1' ? (
-                      <div className="w-12 h-12 rounded-full bg-[#E31837]/80 flex items-center justify-center border border-white/20 z-10 cursor-pointer hover:scale-105 transition-transform"
-                           onClick={() => post.mediaUrl && window.open(post.mediaUrl, '_blank')}>
-                        <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-white border-b-[8px] border-b-transparent ml-1"></div>
+               {post.mediaUrl && (
+                  <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-zinc-950 group-hover:border-[#E31837]/30 transition-colors shadow-2xl">
+                    {post.mediaType === 'video' ? (
+                      <div className="relative aspect-video flex items-center justify-center bg-black">
+                        <video 
+                          src={post.mediaUrl} 
+                          className="w-full h-full object-contain"
+                          controls={false}
+                          muted
+                          loop
+                          playsInline
+                          onMouseOver={(e) => e.currentTarget.play()}
+                          onMouseOut={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none">
+                           <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                              <Play className="w-8 h-8 text-white fill-white ml-1" />
+                           </div>
+                           <span className="absolute bottom-4 left-4 text-[10px] font-black uppercase text-white/50 tracking-widest">Hover to preview</span>
+                        </div>
+                        <div className="absolute top-4 right-4 z-20">
+                           <button 
+                            onClick={() => window.open(post.mediaUrl, '_blank')}
+                            className="bg-black/80 p-2 rounded-full border border-white/10 text-white hover:bg-[#E31837] transition-colors"
+                           >
+                             <ExternalLink className="w-4 h-4" />
+                           </button>
+                        </div>
                       </div>
                     ) : (
-                      <img src={post.mediaUrl} className="max-h-full object-contain relative z-10" alt="Post content" />
+                      <div className="relative group/img">
+                        <img src={post.mediaUrl} className="w-full max-h-[600px] object-cover" alt="Post content" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity flex items-end p-6">
+                           <button 
+                            onClick={() => window.open(post.mediaUrl, '_blank')}
+                            className="text-white text-xs font-bold uppercase underline underline-offset-4 decoration-[#E31837]"
+                           >
+                             View Full Intensity
+                           </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                )}
 
-              <div className="px-4 py-3 bg-zinc-900/50 flex items-center text-xs text-zinc-500 space-x-4">
-                 <button className="hover:text-white transition-colors">{post.likesCount} Likes</button>
-                 <button className="hover:text-white transition-colors">Comment</button>
-                 <span className="text-[#E31837] font-bold uppercase ml-auto">Share</span>
+              <div className="mt-6 flex items-center gap-8 border-t border-white/5 pt-6">
+                 <button 
+                  onClick={() => handleLike(post.id)}
+                  className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat"
+                 >
+                   <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} group-hover/stat:scale-110 transition-transform`} />
+                   <span className="text-xs font-black tracking-tighter">{post.likesCount || ''} {post.likesCount === 1 ? 'Like' : 'Likes'}</span>
+                 </button>
+                 <button className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
+                   <MessageSquare className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                   <span className="text-xs font-black tracking-tighter">Comment</span>
+                 </button>
+                 <button className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
+                   <Share2 className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                   <span className="text-xs font-black tracking-tighter uppercase tracking-widest text-[10px] ml-1">Send</span>
+                 </button>
               </div>
             </div>
           ))}
 
           {posts.length === 0 && (
-            <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-lg text-center">
-              <p className="text-sm text-zinc-500 uppercase font-bold tracking-widest mb-1">No Posts Found</p>
-              <p className="text-xs text-zinc-600">Be the first to upload a highlight.</p>
+            <div className="p-12 bg-zinc-950 border border-dashed border-white/10 rounded-2xl text-center">
+              <Shield className="w-12 h-12 text-zinc-800 mx-auto mb-4" />
+              <p className="text-lg font-black italic uppercase text-white tracking-tighter mb-1">Silence in the Cage.</p>
+              <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Be the first to leave a mark on the feed.</p>
             </div>
           )}
         </div>
 
         {/* Quick News Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 pb-4">
-          <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Official Notice</p>
-            <p className="text-sm font-bold mt-1 text-white">Bellator Open Tryouts in Austin, TX - Aug 24</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-16 pb-8">
+          <div className="p-5 bg-zinc-950 border border-white/5 rounded-2xl">
+            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Official Notice</p>
+            <p className="text-sm font-black italic mt-2 text-white uppercase tracking-tight">Bellator Open Tryouts in Austin, TX - Aug 24</p>
           </div>
-          <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded">
-            <p className="text-[10px] text-[#E31837] uppercase font-bold tracking-widest">Fighter Move</p>
-            <p className="text-sm font-bold mt-1 text-white">Marcus 'Apex' Chen signs with Agent X Pro</p>
+          <div className="p-5 bg-zinc-950 border border-white/5 rounded-2xl">
+            <p className="text-[10px] text-[#E31837] uppercase font-black tracking-widest">Fighter Move</p>
+            <p className="text-sm font-black italic mt-2 text-white uppercase tracking-tight">Marcus 'Apex' Chen signs with Agent X Pro</p>
           </div>
         </div>
       </section>
 
-      {/* Side Stats/Status - Hidden on very small screens, visible on md and up */}
-      <aside className="w-80 flex-col p-6 space-y-6 bg-[#0c0c0c] hidden lg:flex shrink-0 overflow-y-auto">
+      {/* Side Profile/Navigator - Desktop only */}
+      <aside className="w-80 flex-col p-8 space-y-10 bg-[#0c0c0c] hidden lg:flex shrink-0 overflow-y-auto border-l border-white/5 scrollbar-hide">
         {userProfile && (
-          <div className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-lg">
-             <div className="flex items-center gap-4 mb-4">
-                <img 
-                  src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=000&color=fff`} 
-                  className="w-12 h-12 rounded-full border-2 border-zinc-700 object-cover" 
-                  alt="" 
-                />
-                <div className="overflow-hidden">
-                   <h3 className="text-sm font-black uppercase text-white truncate">{userProfile.displayName}</h3>
-                   <p className="text-[10px] text-zinc-500 uppercase font-mono">{userProfile.role}</p>
+          <div className="relative group">
+             <div className="absolute -inset-1 bg-gradient-to-r from-[#E31837] to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+             <div className="relative bg-zinc-900 border border-white/10 p-6 rounded-2xl">
+                <div className="flex items-center gap-5 mb-6">
+                   <img 
+                     src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=000&color=fff`} 
+                     className="w-16 h-16 rounded-full border-2 border-[#E31837] object-cover shadow-xl shadow-red-900/20" 
+                     alt="" 
+                   />
+                   <div className="overflow-hidden">
+                      <h3 className="text-base font-black uppercase italic text-white truncate leading-tight tracking-tighter">{userProfile.displayName}</h3>
+                      <p className="text-[10px] text-[#E31837] font-black uppercase tracking-widest mt-0.5">{userProfile.role}</p>
+                   </div>
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                   <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Record</p>
+                      <p className="text-sm font-black text-white italic">{userProfile.record || '--'}</p>
+                   </div>
+                   <div className="bg-black/40 p-3 rounded-xl border border-white/5">
+                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Status</p>
+                      <p className="text-xs font-black text-green-500 uppercase">Active</p>
+                   </div>
+                </div>
+
+                <Link to="/app/career" className="block w-full py-3 bg-white text-black text-[10px] font-black uppercase tracking-widest text-center rounded-xl hover:bg-zinc-200 transition-all shadow-xl">
+                  Refine Persona
+                </Link>
              </div>
-             <Link to="/app/career" className="block w-full py-2 bg-zinc-800 text-white text-[10px] font-bold uppercase tracking-widest text-center rounded hover:bg-zinc-700 transition">
-               Edit Fighter Profile
-             </Link>
           </div>
         )}
 
         <div>
-          <h3 className="text-xs font-black uppercase text-zinc-500 tracking-widest mb-4">My Career Path</h3>
+          <h3 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-6 flex items-center gap-2">
+            <span className="w-6 h-px bg-zinc-800"></span>
+            Career Mastery
+          </h3>
+          <div className="space-y-6">
+            {[
+              { label: 'AMATEUR CIRCUIT', progress: 100, status: 'COMPLETED', color: 'bg-zinc-500' },
+              { label: 'SEMI-PRO ROSTER', progress: 45, status: 'IN PROGRESS', color: 'bg-[#E31837]' },
+              { label: 'PRO LEGACY', progress: 0, status: 'LOCKED', color: 'bg-zinc-800', locked: true }
+            ].map((tier, i) => (
+              <div key={i} className={`relative ${tier.locked ? 'opacity-20' : ''}`}>
+                 <div className="flex justify-between items-end mb-2">
+                    <span className="text-[11px] font-black italic text-white tracking-tighter uppercase">{tier.label}</span>
+                    <span className={`text-[9px] font-black ${tier.status === 'COMPLETED' ? 'text-zinc-500' : 'text-[#E31837]'} uppercase tracking-widest`}>{tier.status}</span>
+                 </div>
+                 <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/5">
+                    <div className={`h-full ${tier.color} transition-all duration-1000`} style={{ width: `${tier.progress}%` }}></div>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-4">
+          <h3 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-6 flex items-center gap-2">
+             <span className="w-6 h-px bg-zinc-800"></span>
+             Combat Map
+          </h3>
           <div className="space-y-4">
-            <div className="relative pb-4">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-xs font-bold text-white">AMATEUR</span>
-                <span className="text-[10px] text-zinc-500">4-0-0 Record</span>
-              </div>
-              <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="w-full h-full bg-[#E31837]"></div>
-              </div>
-            </div>
-            <div className="relative pb-4">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-xs font-bold text-white">SEMI-PRO</span>
-                <span className="text-[10px] text-[#E31837] font-bold">ACTIVE</span>
-              </div>
-              <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                <div className="w-[40%] h-full bg-[#E31837]"></div>
-              </div>
-            </div>
-            <div className="relative opacity-30">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-xs font-bold text-white">UFC / BELLATOR</span>
-                <span className="text-[10px] text-zinc-500 italic">LOCKED</span>
-              </div>
-              <div className="w-full h-1 bg-zinc-800 rounded-full"></div>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-[#222] pt-6">
-          <h3 className="text-xs font-black uppercase text-zinc-500 tracking-widest mb-4">Fight Schedule</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-2 hover:bg-zinc-900 rounded transition-colors cursor-pointer border border-transparent hover:border-zinc-800">
-              <div>
-                <p className="text-xs font-bold text-white">UFC 305: Pantoja vs Erceg</p>
-                <p className="text-[10px] text-zinc-500 italic">Perth, Australia</p>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-400">05.04</span>
-            </div>
-            <div className="flex items-center justify-between p-2 hover:bg-zinc-900 rounded transition-colors cursor-pointer border border-transparent hover:border-zinc-800">
-              <div>
-                <p className="text-xs font-bold text-white">PFL 4: Regular Season</p>
-                <p className="text-[10px] text-zinc-500 italic">Uncasville, CT</p>
-              </div>
-              <span className="text-[10px] font-mono text-zinc-400">06.13</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-auto pt-6">
-          <div className="p-4 bg-gradient-to-br from-[#1a1a1a] to-black rounded-lg border border-[#E31837]/30">
-            <p className="text-[10px] font-black text-[#E31837] uppercase tracking-widest">Sponsorship Inquiry</p>
-            <h4 className="text-sm font-bold mt-1 text-white">Agent: Sarah Jenkins</h4>
-            <p className="text-[11px] text-zinc-400 mt-1">Recruiting heavyweights for the Pro Circuit. Inquire with stats.</p>
-            <button className="mt-3 text-[10px] font-bold uppercase underline decoration-[#E31837] text-white underline-offset-4 hover:text-[#E31837] transition">Apply for Advocacy</button>
+             {[
+               { event: 'UFC 305: Pantoja vs Erceg', loc: 'Perth, Australia', date: '05.04' },
+               { event: 'PFL 4: Regular Season', loc: 'Uncasville, CT', date: '06.13' }
+             ].map((evt, i) => (
+               <div key={i} className="flex items-center justify-between p-4 bg-zinc-900/30 border border-white/5 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900/50 transition-all cursor-pointer group/item">
+                  <div>
+                    <p className="text-xs font-black text-white italic group-hover/item:text-[#E31837] transition-colors">{evt.event}</p>
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-0.5">{evt.loc}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500 group-hover/item:text-white transition-colors">{evt.date}</span>
+               </div>
+             ))}
           </div>
         </div>
       </aside>

@@ -1,7 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 
 interface UserProfile {
   displayName: string;
@@ -20,6 +29,8 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   loading: boolean;
   loginWithGoogle: (role?: 'fighter' | 'fan' | 'sponsor') => Promise<void>;
+  registerWithEmail: (email: string, password: string, displayName: string, role: 'fighter' | 'fan' | 'sponsor') => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -39,13 +50,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeProfile: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (user) {
-        // Fetch or create profile
-        try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
+        // Real-time profile listener
+        unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserProfile({
@@ -53,59 +70,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now())
             } as UserProfile);
           } else {
-             // If they signed in normally but have no profile
-             setUserProfile(null);
+            setUserProfile(null);
           }
-        } catch (error) {
-          console.error("Error fetching user profile", error);
-        }
+          setLoading(false);
+        }, (error) => {
+          console.error("Profile sync error:", error);
+          setLoading(false);
+        });
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
+
+  const ensureProfile = async (user: User, role: 'fighter' | 'fan' | 'sponsor' = 'fan') => {
+    const docRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      const newProfile: any = {
+        displayName: user.displayName || 'Anonymous Fighter',
+        email: user.email || '',
+        role: role,
+        profileImageUrl: user.photoURL || '',
+        bio: '',
+        record: '',
+        gym: '',
+        isPro: false,
+        createdAt: serverTimestamp(),
+      };
+      await setDoc(docRef, newProfile);
+      setUserProfile({
+        ...newProfile,
+        createdAt: Date.now()
+      });
+    } else {
+      const data = docSnap.data();
+      setUserProfile({
+        ...data,
+        createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now())
+      } as UserProfile);
+    }
+  };
 
   const loginWithGoogle = async (role: 'fighter' | 'fan' | 'sponsor' = 'fan') => {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      const docRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        const newProfile: any = {
-          displayName: user.displayName || 'Anonymous Fighter',
-          email: user.email || '',
-          role: role,
-          profileImageUrl: user.photoURL || '',
-          bio: '',
-          record: '',
-          gym: '',
-          isPro: false,
-          createdAt: serverTimestamp(),
-        };
-        await setDoc(docRef, newProfile);
-        setUserProfile({
-          ...newProfile,
-          createdAt: Date.now()
-        });
-      } else {
-        const data = docSnap.data();
-        setUserProfile({
-          ...data,
-          createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : (data.createdAt || Date.now())
-        } as UserProfile);
-      }
+      await ensureProfile(result.user, role);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
         throw new Error('LOGIN_CANCELLED');
       }
       console.error("Login failed:", error);
+      throw error;
+    }
+  };
+
+  const registerWithEmail = async (email: string, password: string, displayName: string, role: 'fighter' | 'fan' | 'sponsor') => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(result.user, { displayName });
+      await ensureProfile(result.user, role);
+    } catch (error) {
+      console.error("Registration failed:", error);
+      throw error;
+    }
+  };
+
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      await ensureProfile(result.user);
+    } catch (error) {
+      console.error("Email login failed:", error);
       throw error;
     }
   };
@@ -119,6 +163,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userProfile,
     loading,
     loginWithGoogle,
+    registerWithEmail,
+    loginWithEmail,
     logout
   };
 
