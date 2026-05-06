@@ -18,14 +18,14 @@ service cloud.firestore {
     // Validation Helpers
     function isValidUser(data) {
       return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
-             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 50 &&
-             data.email is string && data.email.size() <= 100 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 150 &&
+             data.email is string && data.email.size() <= 255 &&
              data.role in ['fighter', 'fan', 'sponsor'] &&
              (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('profileImageUrl', '') is string && data.get('profileImageUrl', '').size() <= 1000) &&
-             (data.get('bio', '') is string && data.get('bio', '').size() <= 1000) &&
-             (data.get('record', '') is string && data.get('record', '').size() <= 50) &&
-             (data.get('gym', '') is string && data.get('gym', '').size() <= 200) &&
+             (data.get('profileImageUrl', '') is string && data.get('profileImageUrl', '').size() <= 2000) &&
+             (data.get('bio', '') is string && data.get('bio', '').size() <= 2000) &&
+             (data.get('record', '') is string && data.get('record', '').size() <= 100) &&
+             (data.get('gym', '') is string && data.get('gym', '').size() <= 300) &&
              (data.get('isPro', false) is bool);
     }
 
@@ -51,9 +51,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn() && isValidId(userId);
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && isValidUser(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
+      allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt']) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email']) &&
                     incoming().email == existing().email &&
                     incoming().role == existing().role;
     }
@@ -61,10 +61,18 @@ service cloud.firestore {
     match /posts/{postId} {
       allow get: if isSignedIn() && isValidId(postId);
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
-      allow update: if isSignedIn() && existing().authorId == request.auth.uid && isValidPost(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'mediaType', 'createdAt']) &&
-                    incoming().authorId == existing().authorId;
+      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
+      allow update: if isSignedIn() && (
+                      (
+                        existing().authorId == request.auth.uid && isValidPost(incoming()) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'mediaType', 'createdAt']) &&
+                        incoming().authorId == existing().authorId
+                      ) ||
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) &&
+                        incoming().likesCount == existing().likesCount + 1
+                      )
+                    );
       allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
     }
 

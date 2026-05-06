@@ -121,7 +121,7 @@ export function FeedPage() {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim() || !currentUser) return;
+    if ((!newPostContent.trim() && !fileInputRef.current?.files?.[0]) || !currentUser) return;
 
     setIsSubmitting(true);
     let mediaUrl = '';
@@ -134,11 +134,11 @@ export function FeedPage() {
 
       await addDoc(collection(db, 'posts'), {
         authorId: currentUser.uid,
-        content: newPostContent,
+        content: newPostContent.trim(),
         createdAt: serverTimestamp(),
         likesCount: 0,
         mediaUrl,
-        mediaType: file?.type.startsWith('video') ? 'video' : 'image'
+        mediaType: file?.type.startsWith('video') ? 'video' : (file ? 'image' : '')
       });
       
       setNewPostContent('');
@@ -239,17 +239,17 @@ export function FeedPage() {
               {/* Post Header */}
               <div className="flex items-start justify-between mb-4">
                  <div className="flex items-center gap-4">
-                   <div className="relative">
+                   <Link to={`/app/profile/${post.authorId}`} className="relative hover:opacity-80 transition-opacity">
                       <img src={post.authorImage || `https://ui-avatars.com/api/?name=${post.authorName}&background=000&color=fff`} className="w-12 h-12 rounded-full border-2 border-white/5 object-cover" alt="" />
                       {post.authorRole === 'fighter' && (
                         <div className="absolute -bottom-1 -right-1 bg-[#E31837] text-white p-0.5 rounded-full border-2 border-black">
                           <Trophy className="w-3 h-3" />
                         </div>
                       )}
-                   </div>
+                   </Link>
                    <div>
                      <div className="flex items-center gap-2">
-                        <h3 className="font-black text-white text-base tracking-tight uppercase italic">{post.authorName}</h3>
+                        <Link to={`/app/profile/${post.authorId}`} className="font-black text-white text-base tracking-tight uppercase italic hover:text-[#E31837] transition-colors">{post.authorName}</Link>
                         {post.authorRole === 'fighter' && post.authorRecord && (
                           <span className="text-[10px] bg-red-900/20 text-[#E31837] px-1.5 py-0.5 font-black rounded uppercase">{post.authorRecord}</span>
                         )}

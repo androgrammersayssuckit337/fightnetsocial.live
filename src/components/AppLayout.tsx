@@ -10,6 +10,7 @@ import { GymLocatorPage } from './pages/GymLocatorPage';
 import { StorePage } from './pages/StorePage';
 import { CareerPage } from './pages/CareerPage';
 import { SchedulesPage } from './pages/SchedulesPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -141,6 +142,7 @@ export function AppLayout() {
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/store" element={<StorePage />} />
             <Route path="/career" element={<CareerPage />} />
+            <Route path="/profile/:userId" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/app" />} />
           </Routes>
         </div>

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Star, Zap } from 'lucide-react';
+import { Star, Zap, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 
 const MOCK_SPONSORS = [
-  { id: '1', name: 'IRON PEAK Performance', match: 98, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80', req: '7-0 Record minimum' },
-  { id: '2', name: 'VTX Supplements', match: 92, img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=300&q=80', req: 'Heavyweight / LHW' },
-  { id: '3', name: 'Grind Athletics', match: 85, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80', req: 'Strong social presence' }
+  { id: '1', name: 'IRON PEAK Performance', match: 98, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80', req: '7-0 Record minimum', website: 'https://ironpeakperformance.example.com' },
+  { id: '2', name: 'VTX Supplements', match: 92, img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=300&q=80', req: 'Heavyweight / LHW', website: 'https://vtxsupplements.example.com' },
+  { id: '3', name: 'Grind Athletics', match: 85, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80', req: 'Strong social presence', website: 'https://grindathletics.example.com' }
 ];
 
 export function SponsorsPage() {
@@ -54,7 +54,14 @@ export function SponsorsPage() {
               <div className="h-32 bg-cover bg-center opacity-60 group-hover:opacity-100 transition-opacity grayscale group-hover:grayscale-0" style={{ backgroundImage: `url(${sponsor.img})` }}></div>
               <div className="p-4 flex-1 flex flex-col z-10 border-t border-zinc-800">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-sm tracking-tight uppercase max-w-[70%] leading-tight text-white">{sponsor.name}</h3>
+                  <div className="flex items-center gap-2 max-w-[70%]">
+                    <h3 className="font-bold text-sm tracking-tight uppercase leading-tight text-white">{sponsor.name}</h3>
+                    {sponsor.website && (
+                      <a href={sponsor.website} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-white transition-colors flex-shrink-0" title={`Visit ${sponsor.name}`}>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
                   <div className="bg-[#E31837]/20 text-[#E31837] text-[10px] px-2 py-0.5 font-bold rounded">
                     {sponsor.match}%
                   </div>
