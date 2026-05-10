@@ -27,9 +27,22 @@
         "mediaUrl": { "type": "string" },
         "mediaType": { "type": "string", "enum": ["video", "image"] },
         "likesCount": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "reactions": { "type": "object", "description": "Map of userId to emoji" },
         "createdAt": { "type": "number", "description": "Timestamp" }
       },
       "required": ["authorId", "content", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["authorId", "text", "createdAt"]
     },
     "SponsorshipApplication": {
       "title": "Sponsorship Application",
@@ -52,6 +65,10 @@
     "/posts/{postId}": {
       "schema": { "$ref": "#/entities/Post" },
       "description": "Feed posts"
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Post comments"
     },
     "/sponsorships/{applicationId}": {
       "schema": { "$ref": "#/entities/SponsorshipApplication" },

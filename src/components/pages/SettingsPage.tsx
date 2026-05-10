@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Settings, Moon, Sun, Upload, Shield, LogOut, ChevronRight } from 'lucide-react';
+import { Settings, Moon, Sun, Upload, Shield, LogOut, ChevronRight, Bot, Zap, MessageCircle, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ensureBotsExist, triggerBotPost, triggerBotReactions, triggerBotComments } from '../../services/botService';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 export function SettingsPage() {
   const { logout } = useAuth();
@@ -11,6 +14,58 @@ export function SettingsPage() {
   const [darkMode, setDarkMode] = useState(true);
   const [mediaUploadsOnMobile, setMediaUploadsOnMobile] = useState(false);
   const [allowLocation, setAllowLocation] = useState(true);
+  const [isBotWorking, setIsBotWorking] = useState(false);
+
+  const handleSeedBots = async () => {
+    setIsBotWorking(true);
+    try {
+      await ensureBotsExist();
+      alert('Bots seeded successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to seed bots');
+    } finally {
+      setIsBotWorking(false);
+    }
+  };
+
+  const handleTriggerBotPost = async () => {
+    setIsBotWorking(true);
+    try {
+      await triggerBotPost();
+      alert('Bot post created!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to trigger bot post');
+    } finally {
+      setIsBotWorking(false);
+    }
+  };
+
+  const handleTriggerRecentActivity = async () => {
+    setIsBotWorking(true);
+    try {
+      const q = query(collection(db, 'posts'), limit(5));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        alert('No posts found to react to');
+        return;
+      }
+      
+      const promises = snapshot.docs.map(async (postDoc) => {
+        await triggerBotReactions(postDoc.id);
+        await triggerBotComments(postDoc.id);
+      });
+      
+      await Promise.all(promises);
+      alert('Bot activity triggered on recent posts!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to trigger bot activity');
+    } finally {
+      setIsBotWorking(false);
+    }
+  };
   
   const handleLogout = async () => {
     try {
@@ -120,6 +175,61 @@ export function SettingsPage() {
               <LogOut className="w-4 h-4" />
               Sign Out
             </button>
+          </section>
+
+          {/* Test Bots / QA */}
+          <section className="bg-zinc-950 border border-[#E31837]/20 rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="w-4 h-4 text-[#E31837]" />
+              <h2 className="text-xs font-black uppercase text-zinc-500 tracking-widest">Test Bots & QA</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button 
+                onClick={handleSeedBots}
+                disabled={isBotWorking}
+                className="p-4 bg-zinc-900 border border-white/5 rounded-xl hover:border-[#E31837]/50 transition-all group flex flex-col items-center text-center gap-2"
+              >
+                <Shield className="w-6 h-6 text-zinc-500 group-hover:text-[#E31837]" />
+                <div>
+                  <p className="text-xs font-bold text-white">Seed Bots</p>
+                  <p className="text-[10px] text-zinc-500">Initialize mock users</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={handleTriggerBotPost}
+                disabled={isBotWorking}
+                className="p-4 bg-zinc-900 border border-white/5 rounded-xl hover:border-[#E31837]/50 transition-all group flex flex-col items-center text-center gap-2"
+              >
+                <Zap className="w-6 h-6 text-zinc-500 group-hover:text-[#E31837]" />
+                <div>
+                  <p className="text-xs font-bold text-white">Bot Post</p>
+                  <p className="text-[10px] text-zinc-500">Random bot shares tape</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={handleTriggerRecentActivity}
+                disabled={isBotWorking}
+                className="p-4 bg-zinc-900 border border-white/5 rounded-xl hover:border-[#E31837]/50 transition-all group flex flex-col items-center text-center gap-2"
+              >
+                <div className="flex gap-1 group-hover:text-[#E31837] text-zinc-500">
+                  <Heart className="w-4 h-4" />
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Bot Swarm</p>
+                  <p className="text-[10px] text-zinc-500">React to recent posts</p>
+                </div>
+              </button>
+            </div>
+            
+            {isBotWorking && (
+              <p className="text-[10px] text-[#E31837] font-black uppercase tracking-widest animate-pulse text-center">
+                Processing Bot Logic...
+              </p>
+            )}
           </section>
 
           <p className="text-center text-zinc-600 text-xs font-mono uppercase">FightNet Build v1.0.4-beta</p>
