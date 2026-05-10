@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { FeedPage } from './pages/FeedPage';
 import { LandingPage } from './pages/LandingPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -11,6 +11,8 @@ import { StorePage } from './pages/StorePage';
 import { CareerPage } from './pages/CareerPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { NetworkPage } from './pages/NetworkPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -24,10 +26,12 @@ export function AppLayout() {
 
   const navItems = [
     { label: 'Main Feed', path: '/app' },
+    { label: 'Network', path: '/app/network' },
     { label: 'Messenger', path: '/app/messages' },
     { label: 'Gym Locator', path: '/app/gyms' },
     { label: 'Schedules', path: '/app/schedules' },
     { label: 'FightNet Shop', path: '/app/store' },
+    { label: 'Settings', path: '/app/settings' },
   ];
   
   const fighterTools = [
@@ -108,8 +112,7 @@ export function AppLayout() {
                  <p className="text-[10px] text-zinc-500 uppercase">{userProfile?.role}</p>
                </div>
              </div>
-             <button onClick={(e) => { e.preventDefault(); logout(); }} className="text-zinc-500 hover:text-white"><LogOut className="w-4 h-4"/></button>
-          </Link>
+           </Link>
         </div>
       </aside>
 
@@ -126,16 +129,16 @@ export function AppLayout() {
                 Complete Profile
               </Link>
             )}
-            <Link to="/app" className="px-4 py-1.5 bg-white text-black text-xs font-bold uppercase rounded flex items-center hover:bg-zinc-200 transition">
-              <span className="mr-2">+</span> Post Tape
+            <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors">
+              <Settings className="w-5 h-5" />
             </Link>
-             <button onClick={logout} className="md:hidden text-zinc-500 hover:text-white"><LogOut className="w-5 h-5"/></button>
           </div>
         </header>
         
         <div className="flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<FeedPage />} />
+            <Route path="/network" element={<NetworkPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/sponsors" element={<SponsorsPage />} />
             <Route path="/gyms" element={<GymLocatorPage />} />
@@ -143,6 +146,7 @@ export function AppLayout() {
             <Route path="/store" element={<StorePage />} />
             <Route path="/career" element={<CareerPage />} />
             <Route path="/profile/:userId" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/app" />} />
           </Routes>
         </div>

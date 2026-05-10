@@ -6,10 +6,28 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 
 const MOCK_SPONSORS = [
-  { id: '1', name: 'IRON PEAK Performance', match: 98, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80', req: '7-0 Record minimum', website: 'https://ironpeakperformance.example.com' },
-  { id: '2', name: 'VTX Supplements', match: 92, img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=300&q=80', req: 'Heavyweight / LHW', website: 'https://vtxsupplements.example.com' },
-  { id: '3', name: 'Grind Athletics', match: 85, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80', req: 'Strong social presence', website: 'https://grindathletics.example.com' }
+  { id: '1', name: 'IRON PEAK Performance', baseMatch: 60, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80', req: '7-0 Record minimum', website: 'https://ironpeakperformance.example.com' },
+  { id: '2', name: 'VTX Supplements', baseMatch: 75, img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=300&q=80', req: 'Pro Fighters', website: 'https://vtxsupplements.example.com' },
+  { id: '3', name: 'Grind Athletics', baseMatch: 80, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80', req: 'Active profile', website: 'https://grindathletics.example.com' }
 ];
+
+function calculateMatchPercentage(profile: any, sponsor: any) {
+  if (!profile) return sponsor.baseMatch;
+  let score = sponsor.baseMatch;
+  const wins = parseInt(profile.record?.split('-')[0]) || 0;
+  
+  if (sponsor.id === '1') { // wants wins
+    if (wins >= 7) score += 35;
+    else score += (wins * 5);
+  } else if (sponsor.id === '2') {
+    if (profile.isPro) score += 20;
+    if (wins >= 3) score += 5;
+  } else if (sponsor.id === '3') {
+    if (profile.bio?.length > 20) score += 15;
+  }
+  
+  return Math.min(99, score);
+}
 
 export function SponsorsPage() {
   const { currentUser, userProfile } = useAuth();
@@ -63,7 +81,7 @@ export function SponsorsPage() {
                     )}
                   </div>
                   <div className="bg-[#E31837]/20 text-[#E31837] text-[10px] px-2 py-0.5 font-bold rounded">
-                    {sponsor.match}%
+                    {calculateMatchPercentage(userProfile, sponsor)}%
                   </div>
                 </div>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-4">{sponsor.req}</p>

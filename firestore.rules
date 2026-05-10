@@ -20,7 +20,7 @@ service cloud.firestore {
       return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
              data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 150 &&
              data.email is string && data.email.size() <= 255 &&
-             data.role in ['fighter', 'fan', 'sponsor'] &&
+             data.role in ['fighter', 'fan', 'sponsor', 'agent'] &&
              (data.createdAt is timestamp || data.createdAt is number) &&
              (data.get('profileImageUrl', '') is string && data.get('profileImageUrl', '').size() <= 2000) &&
              (data.get('bio', '') is string && data.get('bio', '').size() <= 2000) &&
@@ -34,9 +34,40 @@ service cloud.firestore {
              data.authorId is string && data.authorId == request.auth.uid &&
              data.content is string && data.content.size() <= 2000 &&
              (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 1000) &&
+             (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 2500) &&
              (data.get('mediaType', '') in ['', 'video', 'image']) &&
-             (data.get('likesCount', 0) is number);
+             (data.get('likesCount', 0) is number) &&
+             (data.get('commentsCount', 0) is number) &&
+             (data.get('reactions', {}) is map);
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['authorId', 'text', 'createdAt']) &&
+             data.authorId is string && data.authorId == request.auth.uid &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
+    function isValidConnection(data) {
+      return data.keys().hasAll(['users', 'status', 'createdAt']) &&
+             data.users is list && data.users.size() == 2 && data.users[0] is string && data.users[1] is string &&
+             request.auth.uid in data.users &&
+             data.status in ['pending', 'accepted', 'rejected'] &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['users', 'updatedAt']) &&
+             data.users is list && data.users.size() == 2 && data.users[0] is string && data.users[1] is string &&
+             request.auth.uid in data.users &&
+             (data.updatedAt is timestamp || data.updatedAt is number);
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'text', 'createdAt']) &&
+             data.senderId is string && data.senderId == request.auth.uid &&
+             data.text is string && data.text.size() <= 2000 &&
+             (data.createdAt is timestamp || data.createdAt is number);
     }
 
     function isValidSponsorshipApplication(data) {
@@ -47,11 +78,39 @@ service cloud.firestore {
              (data.createdAt is timestamp || data.createdAt is number);
     }
 
+    function isValidContract(data) {
+      return data.keys().hasAll(['fighterId', 'opponent', 'date', 'promotion', 'payout', 'createdAt']) &&
+             data.fighterId is string && data.fighterId == request.auth.uid &&
+             data.opponent is string && data.opponent.size() <= 150 &&
+             data.date is string && data.date.size() <= 100 &&
+             data.promotion is string && data.promotion.size() <= 150 &&
+             data.payout is string && data.payout.size() <= 100 &&
+             (data.createdAt is timestamp || data.createdAt is number) &&
+             (data.get('contractUrl', '') is string && data.get('contractUrl', '').size() <= 1000);
+    }
+
     // Collections
+    match /contracts/{contractId} {
+      allow get: if isSignedIn() && isValidId(contractId) && (
+        existing().fighterId == request.auth.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['sponsor', 'agent']
+      );
+      allow list: if isSignedIn() && (
+        resource.data.fighterId == request.auth.uid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['sponsor', 'agent']
+      );
+      allow create: if isSignedIn() && isValidId(contractId) && isValidContract(incoming());
+      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidContract(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['opponent', 'date', 'promotion', 'payout', 'contractUrl']) &&
+                    incoming().fighterId == existing().fighterId &&
+                    incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
+    }
+
     match /users/{userId} {
       allow get: if isSignedIn() && isValidId(userId);
       allow list: if isSignedIn();
-      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow create: if isSignedIn() && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email']) &&
                     incoming().email == existing().email &&
@@ -71,9 +130,37 @@ service cloud.firestore {
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) &&
                         incoming().likesCount == existing().likesCount + 1
+                      ) ||
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount']) &&
+                        incoming().commentsCount == existing().commentsCount + 1
+                      ) ||
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['reactions']) &&
+                        incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) &&
+                        (
+                          !(request.auth.uid in incoming().reactions) || 
+                          incoming().reactions[request.auth.uid] in ['🔥', '🥊', '💯', '💪', '🧊']
+                        )
+                      ) ||
+                      (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'reactions']) &&
+                        incoming().likesCount == existing().likesCount + 1 &&
+                        incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) &&
+                        (
+                          !(request.auth.uid in incoming().reactions) || 
+                          incoming().reactions[request.auth.uid] in ['🔥', '🥊', '💯', '💪', '🧊']
+                        )
                       )
                     );
       allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow get: if isSignedIn() && isValidId(commentId);
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && isValidId(commentId) && isValidComment(incoming());
+        allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+      }
     }
 
     match /sponsorships/{applicationId} {
@@ -86,6 +173,31 @@ service cloud.firestore {
                     incoming().diff(existing()).affectedKeys().hasOnly(['pitch', 'createdAt']) &&
                     incoming().fighterId == existing().fighterId &&
                     incoming().status == existing().status;
+    }
+
+    match /connections/{connectionId} {
+      allow get: if isSignedIn() && isValidId(connectionId) && (resource == null || request.auth.uid in existing().users);
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.users || resource.data.status == 'accepted');
+      allow create: if isSignedIn() && isValidId(connectionId) && isValidConnection(incoming()) && incoming().status == 'pending';
+      allow update: if isSignedIn() && request.auth.uid in existing().users && isValidConnection(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                    incoming().users == existing().users &&
+                    incoming().createdAt == existing().createdAt;
+    }
+
+    match /chats/{chatId} {
+      allow get: if isSignedIn() && isValidId(chatId) && (resource == null || request.auth.uid in existing().users);
+      allow list: if isSignedIn() && request.auth.uid in resource.data.users;
+      allow create: if isSignedIn() && isValidId(chatId) && isValidChat(incoming());
+      allow update: if isSignedIn() && request.auth.uid in existing().users && isValidChat(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt']) &&
+                    incoming().users == existing().users;
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(messageId) && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
+        allow list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
+        allow create: if isSignedIn() && isValidId(messageId) && isValidMessage(incoming()) && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
+      }
     }
   }
 }

@@ -41,6 +41,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
+  
   console.error('Firestore Error: ', JSON.stringify(errInfo));
+  
+  // Prevent unhandled promise rejections on logout when listeners are still active
+  if (!auth.currentUser && operationType === OperationType.LIST) {
+     return;
+  }
+  
   throw new Error(JSON.stringify(errInfo));
 }

@@ -1,20 +1,34 @@
-import React, { useState, useRef } from 'react';
-import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, Calendar, Link as LinkIcon, Download } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { motion, AnimatePresence } from 'motion/react';
 import { PromoGenerator } from '../PromoGenerator';
 
 export function CareerPage() {
-  const { userProfile } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+  const [showAddContract, setShowAddContract] = useState(false);
+  const contractFileRef = useRef<HTMLInputElement>(null);
+  const [contractUploadProgress, setContractUploadProgress] = useState(0);
+  const [contractData, setContractData] = useState({
+    opponent: '',
+    date: '',
+    promotion: '',
+    payout: '',
+    contractUrl: ''
+  });
+
   const [formData, setFormData] = useState({
     displayName: userProfile?.displayName || '',
     bio: userProfile?.bio || '',
@@ -23,6 +37,94 @@ export function CareerPage() {
     profileImageUrl: userProfile?.profileImageUrl || '',
     role: userProfile?.role || 'fan',
   });
+
+  useEffect(() => {
+    if (!currentUser || userProfile?.role !== 'fighter') return;
+
+    const fetchContracts = async () => {
+      setLoadingContracts(true);
+      try {
+        const q = query(collection(db, 'contracts'), where('fighterId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const fetchedContracts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setContracts(fetchedContracts);
+      } catch (err) {
+        console.error("Failed to fetch contracts", err);
+      } finally {
+        setLoadingContracts(false);
+      }
+    };
+
+    fetchContracts();
+  }, [currentUser, userProfile?.role]);
+
+  const handleContractUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File too large. Max 10MB.");
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `contracts/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, fileName);
+    
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setContractUploadProgress(progress);
+      }, 
+      (error) => {
+        console.error("Contract Upload Error:", error);
+        alert(`Upload failed: ${error.message}`);
+        setContractUploadProgress(0);
+      }, 
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setContractData(prev => ({ ...prev, contractUrl: downloadURL }));
+          setContractUploadProgress(0);
+        } catch (err: any) {
+          console.error("Error getting download URL:", err);
+          setContractUploadProgress(0);
+        }
+      }
+    );
+  };
+
+  const handleAddContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+    try {
+      await addDoc(collection(db, 'contracts'), {
+        fighterId: auth.currentUser.uid,
+        ...contractData,
+        createdAt: serverTimestamp()
+      });
+      setShowAddContract(false);
+      setContractData({ opponent: '', date: '', promotion: '', payout: '', contractUrl: '' });
+      // Refresh contracts
+      const q = query(collection(db, 'contracts'), where('fighterId', '==', auth.currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      setContracts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'contracts', auth);
+    }
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'contracts', contractId));
+      setContracts(prev => prev.filter(c => c.id !== contractId));
+    } catch (error) {
+       handleFirestoreError(error, OperationType.DELETE, `contracts/${contractId}`, auth);
+    }
+  };
 
   const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -164,7 +266,7 @@ export function CareerPage() {
                       <div className="space-y-4">
                          <label className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">Fighter Status</label>
                          <div className="grid grid-cols-1 gap-3">
-                            {['fighter', 'fan', 'sponsor'].map((role) => (
+                            {['fighter', 'fan', 'sponsor', 'agent'].map((role) => (
                               <button
                                 key={role}
                                 type="button"
@@ -293,6 +395,100 @@ export function CareerPage() {
               <button onClick={() => setShowVideoModal(true)} className="bg-white px-6 py-2 uppercase text-[10px] text-black font-bold mt-4 hover:bg-zinc-200 w-full rounded relative z-10 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.2)]">Create Promo</button>
             </div>
           </div>
+
+          {userProfile?.role === 'fighter' && (
+             <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10 space-y-8">
+                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                     <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3">
+                       <FileText className="w-5 h-5 text-[#E31837]" />
+                       Contract Vault
+                     </h2>
+                     <button 
+                       onClick={() => setShowAddContract(!showAddContract)}
+                       className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded uppercase text-[10px] font-black tracking-widest hover:bg-zinc-200 transition-colors"
+                     >
+                       {showAddContract ? 'Cancel' : <><Plus className="w-4 h-4" /> Add Contract</>}
+                     </button>
+                   </div>
+
+                   {showAddContract && (
+                     <form onSubmit={handleAddContract} className="bg-black/50 p-6 rounded-2xl border border-white/5 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Opponent</label>
+                             <input required value={contractData.opponent} onChange={e => setContractData({...contractData, opponent: e.target.value})} placeholder="e.g. John Doe" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Date</label>
+                             <input required type="date" value={contractData.date} onChange={e => setContractData({...contractData, date: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] outline-none [color-scheme:dark]" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Promotion</label>
+                             <input required value={contractData.promotion} onChange={e => setContractData({...contractData, promotion: e.target.value})} placeholder="e.g. UFC, PFL" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] outline-none" />
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Payout / Purse</label>
+                             <input required value={contractData.payout} onChange={e => setContractData({...contractData, payout: e.target.value})} placeholder="e.g. $10,000 / $10,000" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] outline-none" />
+                           </div>
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Contract (Optional PDF/Image)</label>
+                           <div className="flex items-center gap-4">
+                             <input type="file" ref={contractFileRef} onChange={handleContractUpload} className="hidden" accept="image/*,.pdf" />
+                             <button type="button" onClick={() => contractFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select File</button>
+                             {contractUploadProgress > 0 && contractUploadProgress < 100 && <span className="text-xs text-[#E31837] font-bold">{Math.round(contractUploadProgress)}% Uploading...</span>}
+                             {contractData.contractUrl && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Uploaded</span>}
+                           </div>
+                        </div>
+                        <div className="pt-2">
+                          <button type="submit" disabled={contractUploadProgress > 0 && contractUploadProgress < 100} className="w-full bg-[#E31837] text-white font-black uppercase italic tracking-tighter text-sm px-6 py-4 rounded-xl hover:bg-red-700 transition-all disabled:opacity-50">
+                            Save Contract
+                          </button>
+                        </div>
+                     </form>
+                   )}
+
+                   {loadingContracts ? (
+                     <div className="flex justify-center p-8">
+                       <Loader2 className="w-6 h-6 text-[#E31837] animate-spin" />
+                     </div>
+                   ) : contracts.length > 0 ? (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       {contracts.map(contract => (
+                          <div key={contract.id} className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col justify-between group">
+                            <div>
+                               <div className="flex justify-between items-start mb-4">
+                                  <div className="text-xs uppercase font-black tracking-widest text-[#E31837]">{contract.promotion}</div>
+                                  <button onClick={() => handleDeleteContract(contract.id)} className="text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <Trash2 className="w-4 h-4" />
+                                  </button>
+                               </div>
+                               <h3 className="text-xl font-bold text-white mb-1 leading-none">{contract.opponent}</h3>
+                               <div className="text-sm text-zinc-400 flex items-center gap-2 mb-4">
+                                  <Calendar className="w-3 h-3" /> {new Date(contract.date + 'T12:00:00').toLocaleDateString()}
+                               </div>
+                               <div className="bg-zinc-900 border border-white/5 px-3 py-2 rounded-lg text-xs text-white font-mono inline-block">
+                                  Payout: {contract.payout}
+                               </div>
+                            </div>
+                            {contract.contractUrl && (
+                               <a href={contract.contractUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-zinc-500 hover:text-white transition-colors">
+                                 <LinkIcon className="w-3 h-3" /> View Document
+                               </a>
+                            )}
+                          </div>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="bg-black/30 border border-white/5 rounded-2xl p-10 text-center">
+                       <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">No contracts stored. Add your fight history to attract sponsors.</p>
+                     </div>
+                   )}
+                </div>
+             </div>
+          )}
 
           <div className="bg-[#0c0c0c] border border-[#E31837]/30 p-8 mt-12 rounded-lg">
             <div className="flex flex-col md:flex-row items-center gap-6">

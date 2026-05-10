@@ -1,26 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2 } from 'lucide-react';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+import { handleFirestoreError, OperationType } from '../../utils/error';
 
 export function ProfilePage() {
   const { userId } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [connections, setConnections] = useState<any[]>([]);
 
   useEffect(() => {
     if (!userId) return;
-
-    // If it's the current user, maybe redirect to career page or show this same read-only view with edit button
     
-    const fetchProfile = async () => {
+    const fetchProfileState = async () => {
       try {
         setLoading(true);
         const docRef = doc(db, 'users', userId);
@@ -30,6 +34,36 @@ export function ProfilePage() {
         } else {
           setProfileData(null);
         }
+
+        // Fetch user connections
+        const userConnectionsQuery = query(
+           collection(db, 'connections'),
+           where('users', 'array-contains', userId),
+           where('status', '==', 'accepted')
+        );
+        const userConns = await getDocs(userConnectionsQuery);
+        
+        const friendsList = await Promise.all(userConns.docs.map(async (d) => {
+           const otherId = d.data().users.find((u: string) => u !== userId);
+           if (!otherId) return null;
+           const uDoc = await getDoc(doc(db, 'users', otherId));
+           return { id: otherId, ...uDoc.data() };
+        }));
+        setConnections(friendsList.filter(Boolean));
+
+        // Only fetch my connection status if it's not our own profile and we're logged in
+        if (currentUser && currentUser.uid !== userId) {
+           const connectionQuery = query(
+             collection(db, 'connections'),
+             where('users', 'array-contains', currentUser.uid)
+           );
+           const connSnap = await getDocs(connectionQuery);
+           const conn = connSnap.docs.find(d => d.data().users.includes(userId));
+           if (conn) {
+             setConnectionStatus(conn.data().status);
+             setConnectionId(conn.id);
+           }
+        }
       } catch (err) {
         console.error("Error fetching profile", err);
       } finally {
@@ -37,8 +71,8 @@ export function ProfilePage() {
       }
     };
 
-    fetchProfile();
-  }, [userId]);
+    fetchProfileState();
+  }, [userId, currentUser]);
 
   useEffect(() => {
     if (!userId) return;
@@ -58,7 +92,7 @@ export function ProfilePage() {
         }));
         setPosts(userPosts);
       } catch (err) {
-        console.error("Error fetching user posts:", err);
+         // handle
       } finally {
         setLoadingPosts(false);
       }
@@ -66,6 +100,74 @@ export function ProfilePage() {
 
     fetchUserPosts();
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !currentUser || (!['sponsor', 'agent'].includes(userProfile?.role || '') && currentUser.uid !== userId)) return;
+    
+    // Only fetch contracts if we are a sponsor/agent or looking at our own profile
+    const fetchContracts = async () => {
+      try {
+        setLoadingContracts(true);
+        const q = query(
+          collection(db, 'contracts'),
+          where('fighterId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+        setContracts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error("Failed to load contracts", err);
+      } finally {
+        setLoadingContracts(false);
+      }
+    };
+
+    fetchContracts();
+  }, [userId, currentUser, userProfile?.role]);
+
+  const handleConnect = async () => {
+     if (!currentUser || !userId) return;
+     try {
+        const docId = [currentUser.uid, userId].sort().join('_');
+        await setDoc(doc(db, 'connections', docId), {
+           users: [currentUser.uid, userId],
+           status: 'pending',
+           createdAt: serverTimestamp()
+        });
+        setConnectionStatus('pending');
+        setConnectionId(docId);
+     } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, 'connections', auth);
+     }
+  };
+
+  const handleAccept = async () => {
+     if (!connectionId) return;
+     try {
+        await updateDoc(doc(db, 'connections', connectionId), {
+           status: 'accepted'
+        });
+        setConnectionStatus('accepted');
+     } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, 'connections', auth);
+     }
+  };
+
+  const handleMessage = async () => {
+     if (!currentUser || !userId) return;
+     try {
+        const chatId = [currentUser.uid, userId].sort().join('_');
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (!chatDoc.exists()) {
+           await setDoc(doc(db, 'chats', chatId), {
+              users: [currentUser.uid, userId],
+              updatedAt: serverTimestamp()
+           });
+        }
+        navigate('/app/messages');
+     } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, 'chats', auth);
+     }
+  };
 
   if (loading) {
     return (
@@ -96,13 +198,32 @@ export function ProfilePage() {
            </div>
         </div>
         
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <button 
             onClick={() => navigate('/app/career')}
             className="flex items-center gap-3 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-white text-black hover:bg-zinc-200 shadow-xl"
           >
             <Edit2 className="w-4 h-4" /> Edit Profile
           </button>
+        ) : (
+          <div className="flex gap-4">
+            {connectionStatus === 'accepted' ? (
+               <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-zinc-900 text-white border border-green-500/30 text-green-500">
+                  <Check className="w-4 h-4" /> Connected
+               </button>
+            ) : connectionStatus === 'pending' ? (
+               <button onClick={handleAccept} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-white text-black hover:bg-zinc-200">
+                  <Check className="w-4 h-4" /> Accept request
+               </button>
+            ) : (
+               <button onClick={handleConnect} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-[#E31837] text-white hover:bg-red-700 shadow-xl">
+                  <UserPlus className="w-4 h-4" /> Connect
+               </button>
+            )}
+            <button onClick={handleMessage} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-zinc-900 text-white border border-white/10 hover:bg-zinc-800">
+                <FileText className="w-4 h-4" /> Message
+            </button>
+          </div>
         )}
       </header>
 
@@ -147,6 +268,26 @@ export function ProfilePage() {
                           : new Date().getFullYear()}
                      </span>
                   </div>
+               </div>
+            </div>
+
+            <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl space-y-6 shadow-2xl">
+               <h4 className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                 <UserPlus className="w-4 h-4" /> Connections ({connections.length})
+               </h4>
+               <div className="space-y-3">
+                  {connections.slice(0, 5).map(conn => (
+                     <div key={conn.id} className="flex items-center gap-3">
+                        <img src={conn.profileImageUrl || `https://ui-avatars.com/api/?name=${conn.displayName}&background=0c0c0c&color=fff`} className="w-8 h-8 rounded-full border border-white/10 object-cover" alt="" />
+                        <div>
+                           <div className="text-xs font-bold uppercase text-white truncate max-w-[120px]">{conn.displayName}</div>
+                           <div className="text-[10px] text-zinc-500 uppercase tracking-widest">{conn.role}</div>
+                        </div>
+                     </div>
+                  ))}
+                  {connections.length === 0 && (
+                     <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">No connections yet</div>
+                  )}
                </div>
             </div>
          </div>
@@ -197,6 +338,51 @@ export function ProfilePage() {
                  </div>
                )}
             </div>
+
+            {(['sponsor', 'agent'].includes(userProfile?.role || '') || currentUser?.uid === userId) && profileData?.role === 'fighter' && (
+              <div className="space-y-4 mt-12 bg-zinc-950 border border-white/5 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
+                 <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                 <div className="relative z-10 space-y-6">
+                    <h3 className="text-xl font-black uppercase text-white tracking-tight italic flex items-center gap-3 border-b border-white/5 pb-4">
+                      <FileText className="w-5 h-5 text-[#E31837]" /> Contract Vault
+                    </h3>
+
+                    {loadingContracts ? (
+                      <div className="flex justify-center p-8">
+                        <Loader2 className="w-6 h-6 text-[#E31837] animate-spin" />
+                      </div>
+                    ) : contracts.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {contracts.map(contract => (
+                           <div key={contract.id} className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col justify-between group/contract">
+                             <div>
+                                <div className="flex justify-between items-start mb-4">
+                                   <div className="text-xs uppercase font-black tracking-widest text-[#E31837]">{contract.promotion}</div>
+                                </div>
+                                <h4 className="text-lg font-bold text-white mb-1 leading-none">{contract.opponent}</h4>
+                                <div className="text-sm text-zinc-400 flex items-center gap-2 mb-4">
+                                   <Calendar className="w-3 h-3" /> {new Date(contract.date + 'T12:00:00').toLocaleDateString()}
+                                </div>
+                                <div className="bg-zinc-900 border border-white/5 px-3 py-2 rounded-lg text-xs text-white font-mono inline-block">
+                                   Payout: {contract.payout}
+                                </div>
+                             </div>
+                             {contract.contractUrl && (
+                                <a href={contract.contractUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-zinc-500 hover:text-white transition-colors">
+                                  <LinkIcon className="w-3 h-3" /> View Document
+                                </a>
+                             )}
+                           </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-black/30 border border-white/5 rounded-2xl p-10 text-center">
+                        <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">No contracts stored by this fighter.</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+            )}
          </div>
       </div>
     </div>

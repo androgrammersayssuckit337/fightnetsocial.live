@@ -9,10 +9,12 @@ import {
   onSnapshot, 
   addDoc, 
   doc, 
-  getDoc, 
+  getDoc,
+  getDocs,
   serverTimestamp, 
   updateDoc, 
-  increment as firestoreIncrement 
+  increment as firestoreIncrement,
+  deleteField
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
@@ -26,13 +28,26 @@ interface Post {
   mediaUrl?: string;
   mediaType?: 'video' | 'image';
   likesCount: number;
+  commentsCount?: number;
   createdAt: number;
   authorName?: string;
   authorImage?: string;
   authorRole?: string;
   authorRecord?: string;
   authorGym?: string;
+  reactions?: Record<string, string>;
 }
+
+interface Comment {
+  id: string;
+  authorId: string;
+  text: string;
+  createdAt: number;
+  authorName?: string;
+  authorImage?: string;
+}
+
+const EMOJI_OPTIONS = ['🔥', '🥊', '💯', '💪', '🧊'];
 
 export function FeedPage() {
   const { currentUser, userProfile } = useAuth();
@@ -40,6 +55,11 @@ export function FeedPage() {
   const [newPostContent, setNewPostContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [openReactionPostId, setOpenReactionPostId] = useState<string | null>(null);
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -102,7 +122,7 @@ export function FeedPage() {
         }, 
         (error) => {
           console.error("Firebase Storage Upload Error:", error);
-          alert(`Upload failed: ${error.message}. Large files (>20MB) are blocked.`);
+          alert(`Upload failed: ${error.message}. Large files (>100MB) are blocked.`);
           reject(error);
         }, 
         async () => {
@@ -132,13 +152,16 @@ export function FeedPage() {
         mediaUrl = await handleFileUpload(file);
       }
 
+      const isVideo = file ? Boolean(file.type.startsWith('video') || file.name.toLowerCase().match(/\.(mp4|mov|wmv|avi|mkv|webm)$/)) : false;
+
       await addDoc(collection(db, 'posts'), {
         authorId: currentUser.uid,
         content: newPostContent.trim(),
         createdAt: serverTimestamp(),
         likesCount: 0,
+        reactions: {},
         mediaUrl,
-        mediaType: file?.type.startsWith('video') ? 'video' : (file ? 'image' : '')
+        mediaType: isVideo ? 'video' : (file ? 'image' : '')
       });
       
       setNewPostContent('');
@@ -151,6 +174,97 @@ export function FeedPage() {
     }
   };
 
+  const handleShare = async (postId: string) => {
+    const postUrl = `${window.location.origin}/app/feed/${postId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'FightNet Post',
+          text: 'Check out this post on FightNet!',
+          url: postUrl,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        alert('Link copied to clipboard!');
+      } catch (error) {
+        console.error('Copy to clipboard failed', error);
+        alert('Failed to copy link.');
+      }
+    }
+  };
+
+  const fetchComments = async (postId: string) => {
+    try {
+      const q = query(
+        collection(db, 'posts', postId, 'comments'),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      const commentsData = await Promise.all(snapshot.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        let authorName = 'Unknown User';
+        let authorImage = '';
+        if (data.authorId) {
+          try {
+            const userSnap = await getDoc(doc(db, 'users', data.authorId));
+            if (userSnap.exists()) {
+              const userData = userSnap.data();
+              authorName = userData.displayName || 'Unknown User';
+              authorImage = userData.profileImageUrl || '';
+            }
+          } catch (e) {
+            console.error('Failed to fetch user for comment:', e);
+          }
+        }
+        return {
+          id: docSnap.id,
+          ...data,
+          authorName,
+          authorImage,
+        } as Comment;
+      }));
+      setComments(prev => ({ ...prev, [postId]: commentsData }));
+    } catch (error) {
+       console.error("Failed to fetch comments", error);
+    }
+  };
+
+  const handleToggleComments = (postId: string) => {
+    if (openCommentsPostId === postId) {
+      setOpenCommentsPostId(null);
+    } else {
+      setOpenCommentsPostId(postId);
+      fetchComments(postId);
+    }
+  };
+
+  const handleCreateComment = async (e: React.FormEvent, postId: string) => {
+    e.preventDefault();
+    if (!newCommentText.trim() || !currentUser) return;
+    setIsSubmittingComment(true);
+    try {
+      await addDoc(collection(db, 'posts', postId, 'comments'), {
+        authorId: currentUser.uid,
+        text: newCommentText.trim(),
+        createdAt: serverTimestamp()
+      });
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        commentsCount: firestoreIncrement(1)
+      });
+      setNewCommentText('');
+      fetchComments(postId);
+    } catch (error) {
+      console.error("Failed to post comment:", error);
+    } finally {
+       setIsSubmittingComment(false);
+    }
+  };
+
   const handleLike = async (postId: string) => {
     try {
       const postRef = doc(db, 'posts', postId);
@@ -159,6 +273,32 @@ export function FeedPage() {
       });
     } catch (error) {
       console.error("Like failed:", error);
+    }
+  };
+
+  const handleReaction = async (postId: string, emoji: string) => {
+    if (!currentUser) return;
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        [`reactions.${currentUser.uid}`]: emoji
+      });
+      setOpenReactionPostId(null);
+    } catch (error) {
+      console.error("Reaction failed:", error);
+      handleFirestoreError(error, OperationType.UPDATE, 'posts', auth);
+    }
+  };
+
+  const handleRemoveReaction = async (postId: string) => {
+    if (!currentUser) return;
+    try {
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        [`reactions.${currentUser.uid}`]: deleteField()
+      });
+    } catch (error) {
+       console.error("Reaction remove failed:", error);
     }
   };
 
@@ -177,11 +317,10 @@ export function FeedPage() {
           </div>
         </div>
 
-        {userProfile?.role === 'fighter' && (
-          <form onSubmit={handleCreatePost} className="bg-zinc-950 border border-white/10 rounded-xl p-6 shadow-2xl relative group overflow-hidden">
+        <form onSubmit={handleCreatePost} className="bg-zinc-950 border border-white/10 rounded-xl p-6 shadow-2xl relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="flex gap-5 relative z-10">
-              <img src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=111&color=fff`} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover" />
+              <img src={userProfile?.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile?.displayName || 'User'}&background=111&color=fff`} alt="" className="w-10 h-10 rounded-full border border-white/10 object-cover" />
               <div className="flex-1">
                 <textarea 
                   value={newPostContent}
@@ -231,8 +370,6 @@ export function FeedPage() {
               </div>
             </div>
           </form>
-        )}
-
         <div className="space-y-12">
           {posts.map(post => (
             <div key={post.id} className="group relative bg-[#0a0a0a] animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -265,7 +402,7 @@ export function FeedPage() {
                      </div>
                    </div>
                  </div>
-                 <button className="text-zinc-800 hover:text-white transition-colors">
+                 <button onClick={() => handleShare(post.id)} className="text-zinc-800 hover:text-white transition-colors">
                    <Share2 className="w-4 h-4" />
                  </button>
               </div>
@@ -282,27 +419,9 @@ export function FeedPage() {
                         <video 
                           src={post.mediaUrl} 
                           className="w-full h-full object-contain"
-                          controls={false}
-                          muted
-                          loop
+                          controls
                           playsInline
-                          onMouseOver={(e) => e.currentTarget.play()}
-                          onMouseOut={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
                         />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none">
-                           <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                              <Play className="w-8 h-8 text-white fill-white ml-1" />
-                           </div>
-                           <span className="absolute bottom-4 left-4 text-[10px] font-black uppercase text-white/50 tracking-widest">Hover to preview</span>
-                        </div>
-                        <div className="absolute top-4 right-4 z-20">
-                           <button 
-                            onClick={() => window.open(post.mediaUrl, '_blank')}
-                            className="bg-black/80 p-2 rounded-full border border-white/10 text-white hover:bg-[#E31837] transition-colors"
-                           >
-                             <ExternalLink className="w-4 h-4" />
-                           </button>
-                        </div>
                       </div>
                     ) : (
                       <div className="relative group/img">
@@ -320,23 +439,124 @@ export function FeedPage() {
                   </div>
                )}
 
-              <div className="mt-6 flex items-center gap-8 border-t border-white/5 pt-6">
-                 <button 
-                  onClick={() => handleLike(post.id)}
-                  className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat"
-                 >
-                   <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} group-hover/stat:scale-110 transition-transform`} />
-                   <span className="text-xs font-black tracking-tighter">{post.likesCount || ''} {post.likesCount === 1 ? 'Like' : 'Likes'}</span>
-                 </button>
-                 <button className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
-                   <MessageSquare className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
-                   <span className="text-xs font-black tracking-tighter">Comment</span>
-                 </button>
-                 <button className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
-                   <Share2 className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
-                   <span className="text-xs font-black tracking-tighter uppercase tracking-widest text-[10px] ml-1">Send</span>
-                 </button>
+              <div className="mt-6 flex flex-col gap-4 border-t border-white/5 pt-6">
+                 {/* Reactions Display */}
+                 {post.reactions && Object.keys(post.reactions).length > 0 && (
+                   <div className="flex flex-wrap gap-2">
+                     {Object.entries(
+                       (Object.values(post.reactions) as string[]).reduce((acc: Record<string, number>, emoji: string) => {
+                         if (emoji) acc[emoji] = (acc[emoji] || 0) + 1;
+                         return acc;
+                       }, {} as Record<string, number>)
+                     ).map(([emoji, count]) => (
+                       <div key={emoji} className="flex items-center gap-1.5 bg-zinc-900 border border-white/5 rounded-full px-3 py-1">
+                         <span className="text-sm">{emoji}</span>
+                         <span className="text-xs text-white font-bold">{count}</span>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+
+                 <div className="flex items-center gap-8 relative">
+                   {/* React Button & Popover */}
+                   <div>
+                      {openReactionPostId === post.id && (
+                        <div className="absolute bottom-full mb-2 -left-2 bg-zinc-900 border border-white/10 p-2 rounded-full flex gap-1 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2">
+                           {EMOJI_OPTIONS.map(emoji => (
+                              <button 
+                                key={emoji}
+                                onClick={() => handleReaction(post.id, emoji)}
+                                className={`w-10 h-10 flex items-center justify-center text-xl hover:scale-125 hover:bg-white/10 rounded-full transition-all ${post.reactions?.[currentUser?.uid || ''] === emoji ? 'bg-white/20' : ''}`}
+                              >
+                                {emoji}
+                              </button>
+                           ))}
+                           {post.reactions?.[currentUser?.uid || ''] && (
+                              <button 
+                                onClick={() => handleRemoveReaction(post.id)}
+                                className="w-10 h-10 flex items-center justify-center text-xs text-zinc-500 font-bold uppercase hover:bg-white/10 rounded-full transition-all ml-1 border-l border-white/10"
+                              >
+                                X
+                              </button>
+                           )}
+                        </div>
+                      )}
+                      
+                      <button 
+                        onClick={() => setOpenReactionPostId(post.id === openReactionPostId ? null : post.id)}
+                        className={`flex items-center gap-2.5 transition-all group/stat ${post.reactions?.[currentUser?.uid || ''] ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
+                      >
+                         <span className="text-xl leading-none group-hover/stat:scale-110 transition-transform">
+                            {post.reactions?.[currentUser?.uid || ''] ? post.reactions[currentUser?.uid || ''] : '🤍'}
+                         </span>
+                         <span className="text-xs font-black tracking-tighter uppercase ml-1">React</span>
+                      </button>
+                   </div>
+
+                   <button 
+                    onClick={() => handleLike(post.id)}
+                    className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat"
+                   >
+                     <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} group-hover/stat:scale-110 transition-transform`} />
+                     <span className="text-xs font-black tracking-tighter">{post.likesCount || ''} {post.likesCount === 1 ? 'Like' : 'Likes'}</span>
+                   </button>
+                   <button onClick={() => handleToggleComments(post.id)} className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
+                     <MessageSquare className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                     <span className="text-xs font-black tracking-tighter">{post.commentsCount || ''} {post.commentsCount === 1 ? 'Comment' : 'Comments'}</span>
+                   </button>
+                   <button onClick={() => handleShare(post.id)} className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
+                     <Share2 className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                     <span className="text-xs font-black tracking-tighter uppercase tracking-widest text-[10px] ml-1">Send</span>
+                   </button>
+                 </div>
               </div>
+
+              {openCommentsPostId === post.id && (
+                <div className="border-t border-white/5 p-6 bg-zinc-950/50">
+                  <form onSubmit={(e) => handleCreateComment(e, post.id)} className="flex items-center gap-3 mb-6">
+                    <img src={userProfile?.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile?.displayName || 'User'}&background=111&color=fff`} className="w-8 h-8 rounded-full border border-white/10" alt="" />
+                    <input 
+                      type="text" 
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      placeholder="Add a comment..." 
+                      className="flex-1 bg-zinc-900 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
+                      disabled={isSubmittingComment}
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={!newCommentText.trim() || isSubmittingComment}
+                      className="text-[#E31837] font-black uppercase text-xs tracking-wider disabled:opacity-50"
+                    >
+                      Post
+                    </button>
+                  </form>
+
+                  <div className="space-y-4">
+                    {(comments[post.id] || []).map((comment) => (
+                      <div key={comment.id} className="flex gap-3 relative group">
+                        <Link to={`/app/profile/${comment.authorId}`}>
+                          <img src={comment.authorImage || `https://ui-avatars.com/api/?name=${comment.authorName}&background=0c0c0c&color=fff`} className="w-8 h-8 rounded-full border border-zinc-800 object-cover mt-1" alt="" />
+                        </Link>
+                        <div className="flex-1">
+                          <div className="bg-zinc-900/50 rounded-2xl rounded-tl-sm px-4 py-2 inline-block max-w-full border border-white/5">
+                            <Link to={`/app/profile/${comment.authorId}`} className="font-bold text-xs text-white hover:underline mr-2">
+                              {comment.authorName}
+                            </Link>
+                            <p className="text-sm text-zinc-300 break-words whitespace-pre-wrap">{comment.text}</p>
+                          </div>
+                          <p className="text-[10px] text-zinc-600 mt-1 ml-2">
+                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {comments[post.id]?.length === 0 && (
+                      <p className="text-center text-zinc-600 text-xs py-4">No comments yet. Be the first.</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
 
