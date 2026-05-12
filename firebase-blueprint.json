@@ -55,9 +55,26 @@
         "createdAt": { "type": "number" }
       },
       "required": ["fighterId", "status", "pitch", "createdAt"]
+    },
+    "VideoClip": {
+      "title": "Video Clip",
+      "description": "A short training video clip uploaded by a fighter.",
+      "type": "object",
+      "properties": {
+        "fighterId": { "type": "string" },
+        "title": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["fighterId", "videoUrl", "createdAt"]
     }
   },
   "firestore": {
+    "/videoClips/{clipId}": {
+      "schema": { "$ref": "#/entities/VideoClip" },
+      "description": "Training video clips"
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
       "description": "User profiles"

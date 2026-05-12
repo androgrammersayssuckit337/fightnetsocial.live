@@ -29,6 +29,17 @@ export function CareerPage() {
     contractUrl: ''
   });
 
+  const [videoClips, setVideoClips] = useState<any[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [showAddVideo, setShowAddVideo] = useState(false);
+  const videoFileRef = useRef<HTMLInputElement>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoData, setVideoData] = useState({
+    title: '',
+    videoUrl: '',
+    thumbnailUrl: ''
+  });
+
   const [formData, setFormData] = useState({
     displayName: userProfile?.displayName || '',
     bio: userProfile?.bio || '',
@@ -55,8 +66,91 @@ export function CareerPage() {
       }
     };
 
+    const fetchVideos = async () => {
+      setLoadingVideos(true);
+      try {
+        const q = query(collection(db, 'videoClips'), where('fighterId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const fetchedVideos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setVideoClips(fetchedVideos);
+      } catch (err) {
+        console.error("Failed to fetch videos", err);
+      } finally {
+        setLoadingVideos(false);
+      }
+    };
+
     fetchContracts();
+    fetchVideos();
   }, [currentUser, userProfile?.role]);
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+      alert("Video file too large. Max 50MB.");
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `videos/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, fileName);
+    
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setVideoUploadProgress(progress);
+      }, 
+      (error) => {
+        console.error("Video Upload Error:", error);
+        alert(`Upload failed: ${error.message}`);
+        setVideoUploadProgress(0);
+      }, 
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setVideoData(prev => ({ ...prev, videoUrl: downloadURL }));
+          setVideoUploadProgress(0);
+        } catch (err: any) {
+          console.error("Error getting download URL:", err);
+          setVideoUploadProgress(0);
+        }
+      }
+    );
+  };
+
+  const handleAddVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser || !videoData.videoUrl) return;
+    try {
+      await addDoc(collection(db, 'videoClips'), {
+        fighterId: auth.currentUser.uid,
+        ...videoData,
+        createdAt: serverTimestamp()
+      });
+      setShowAddVideo(false);
+      setVideoData({ title: '', videoUrl: '', thumbnailUrl: '' });
+      // Refresh videos
+      const q = query(collection(db, 'videoClips'), where('fighterId', '==', auth.currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      setVideoClips(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'videoClips', auth);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'videoClips', videoId));
+      setVideoClips(prev => prev.filter(v => v.id !== videoId));
+    } catch (error) {
+       handleFirestoreError(error, OperationType.DELETE, `videoClips/${videoId}`, auth);
+    }
+  };
 
   const handleContractUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -395,6 +489,80 @@ export function CareerPage() {
               <button onClick={() => setShowVideoModal(true)} className="bg-white px-6 py-2 uppercase text-[10px] text-black font-bold mt-4 hover:bg-zinc-200 w-full rounded relative z-10 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.2)]">Create Promo</button>
             </div>
           </div>
+
+          {userProfile?.role === 'fighter' && (
+             <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10 space-y-8">
+                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                     <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3">
+                       <Video className="w-5 h-5 text-[#E31837]" />
+                       Training Reels & Tape
+                     </h2>
+                     <button 
+                       onClick={() => setShowAddVideo(!showAddVideo)}
+                       className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded uppercase text-[10px] font-black tracking-widest hover:bg-zinc-200 transition-colors"
+                     >
+                       {showAddVideo ? 'Cancel' : <><Plus className="w-4 h-4" /> Add Clip</>}
+                     </button>
+                   </div>
+
+                   {showAddVideo && (
+                     <form onSubmit={handleAddVideo} className="bg-black/50 p-6 rounded-2xl border border-white/5 space-y-6">
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Clip Title</label>
+                             <input required value={videoData.title} onChange={e => setVideoData({...videoData, title: e.target.value})} placeholder="e.g. Heavy Bag Session, Sparring Highlights" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] outline-none" />
+                           </div>
+                           
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Video (Max 50MB)</label>
+                             <div className="flex items-center gap-4">
+                               <input type="file" ref={videoFileRef} onChange={handleVideoUpload} className="hidden" accept="video/*" />
+                               <button type="button" onClick={() => videoFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Video</button>
+                               {videoUploadProgress > 0 && videoUploadProgress < 100 && <span className="text-xs text-[#E31837] font-bold">{Math.round(videoUploadProgress)}% Uploading...</span>}
+                               {videoData.videoUrl && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Ready</span>}
+                             </div>
+                           </div>
+                        </div>
+                        <div className="pt-2">
+                          <button type="submit" disabled={!videoData.videoUrl || (videoUploadProgress > 0 && videoUploadProgress < 100)} className="w-full bg-[#E31837] text-white font-black uppercase italic tracking-tighter text-sm px-6 py-4 rounded-xl hover:bg-red-700 transition-all disabled:opacity-50">
+                            Post to Profile
+                          </button>
+                        </div>
+                     </form>
+                   )}
+
+                   {loadingVideos ? (
+                     <div className="flex justify-center p-8">
+                       <Loader2 className="w-6 h-6 text-[#E31837] animate-spin" />
+                     </div>
+                   ) : videoClips.length > 0 ? (
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                       {videoClips.map(clip => (
+                          <div key={clip.id} className="group/clip relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
+                             <video 
+                               src={clip.videoUrl} 
+                               className="w-full h-full object-cover"
+                               controls
+                             />
+                             <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start opacity-0 group-hover/clip:opacity-100 transition-opacity">
+                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>
+                                <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10">
+                                   <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                             </div>
+                          </div>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="bg-black/30 border border-white/5 rounded-2xl p-10 text-center">
+                       <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">No performance tape uploaded. Show agents your skills.</p>
+                     </div>
+                   )}
+                </div>
+             </div>
+          )}
 
           {userProfile?.role === 'fighter' && (
              <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">

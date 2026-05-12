@@ -2,9 +2,30 @@ import React from 'react';
 import { Calendar, MapPin, Ticket } from 'lucide-react';
 
 const UPCOMING_FIGHTS = [
-  { id: 1, event: 'UFC 305: Pantoja vs Erceg', location: 'Perth, Australia', date: '05.04', time: '10:00 PM EST', mainCard: ['Pantoja vs Erceg', 'Martinez vs Aldo'] },
-  { id: 2, event: 'PFL 4: Regular Season', location: 'Uncasville, CT', date: '06.13', time: '6:30 PM EST', mainCard: ['Wilkinson vs Gouti', 'Collard vs Madge'] },
-  { id: 3, event: 'Bellator Champions Series', location: 'Dublin, Ireland', date: '06.22', time: '1:00 PM EST', mainCard: ['Eblen vs Edwards', 'Karakhanyan vs Burnell'] },
+  { 
+    id: 1, 
+    event: 'UFC 302: Makhachev vs Poirier', 
+    location: 'Newark, New Jersey', 
+    date: '06.01.2024', 
+    time: '10:00 PM EST', 
+    mainCard: ['Islam Makhachev vs Dustin Poirier', 'Sean Strickland vs Paulo Costa'] 
+  },
+  { 
+    id: 2, 
+    event: 'PFL 4: 2024 Regular Season', 
+    location: 'Uncasville, CT', 
+    date: '06.13.2024', 
+    time: '6:30 PM EST', 
+    mainCard: ['Valentin Moldavsky vs Linton Vassell', 'Dakota Ditcheva vs Chelsea Hackett'] 
+  },
+  { 
+    id: 3, 
+    event: 'UFC Fight Night: Whittaker vs Chimaev', 
+    location: 'Riyadh, Saudi Arabia', 
+    date: '06.22.2024', 
+    time: '3:00 PM EST', 
+    mainCard: ['Robert Whittaker vs Khamzat Chimaev', 'Sergei Pavlovich vs Alexander Volkov'] 
+  },
 ];
 
 export function SchedulesPage() {
@@ -39,9 +60,14 @@ export function SchedulesPage() {
               </div>
 
               <div className="flex items-center gap-4 border-t md:border-t-0 md:border-l border-[#222] pt-4 md:pt-0 md:pl-6 shrink-0">
-                <button className="bg-white text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded hover:bg-zinc-200 transition flex items-center gap-2">
+                <a 
+                  href={`https://www.google.com/search?q=${encodeURIComponent(fight.event + ' tickets')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white text-black px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded hover:bg-zinc-200 transition flex items-center gap-2"
+                >
                   <Ticket className="w-4 h-4" /> Buy Tickets
-                </button>
+                </a>
               </div>
             </div>
           </div>
