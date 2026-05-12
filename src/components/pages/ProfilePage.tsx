@@ -15,6 +15,8 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [videoClips, setVideoClips] = useState<any[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
   const [contracts, setContracts] = useState<any[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
@@ -98,7 +100,28 @@ export function ProfilePage() {
       }
     };
 
+    const fetchUserVideos = async () => {
+      try {
+        setLoadingVideos(true);
+        const q = query(
+          collection(db, 'videoClips'),
+          where('fighterId', '==', userId)
+        );
+        const querySnapshot = await getDocs(q);
+        const userVideos = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setVideoClips(userVideos);
+      } catch (err) {
+         // handle
+      } finally {
+        setLoadingVideos(false);
+      }
+    };
+
     fetchUserPosts();
+    fetchUserVideos();
   }, [userId]);
 
   useEffect(() => {
@@ -207,6 +230,32 @@ export function ProfilePage() {
           </button>
         ) : (
           <div className="flex gap-4">
+            <button 
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      successUrl: window.location.href,
+                      cancelUrl: window.location.href,
+                      customerEmail: currentUser?.email || ''
+                    })
+                  });
+                  const data = await response.json();
+                  if (data.url) {
+                    window.location.href = data.url;
+                  } else {
+                    alert(data.error || 'Checkout failed. Ensure SQUARE_ACCESS_TOKEN is configured.');
+                  }
+                } catch (error) {
+                  alert('Error processing subscription.');
+                }
+              }}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-[#E31837] text-white hover:bg-red-700 shadow-[0_0_15px_rgba(227,24,55,0.4)]"
+            >
+              Support Fighter
+            </button>
             {connectionStatus === 'accepted' ? (
                <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-zinc-900 text-white border border-green-500/30 text-green-500">
                   <Check className="w-4 h-4" /> Connected
@@ -305,7 +354,38 @@ export function ProfilePage() {
                </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mt-8">
+               <h3 className="text-lg font-black uppercase text-white tracking-tight italic flex items-center gap-3 border-b border-white/5 pb-4">
+                 <ExternalLink className="w-5 h-5 text-[#E31837]" /> Training Reels & Tape
+               </h3>
+
+               {loadingVideos ? (
+                 <div className="flex justify-center p-8">
+                   <div className="w-6 h-6 border-2 border-[#E31837] border-t-transparent rounded-full animate-spin"></div>
+                 </div>
+               ) : videoClips.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                   {videoClips.map(clip => (
+                      <div key={clip.id} className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
+                         <video 
+                           src={clip.videoUrl} 
+                           className="w-full h-full object-cover"
+                           controls
+                         />
+                         <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                            <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>
+                         </div>
+                      </div>
+                   ))}
+                 </div>
+               ) : (
+                 <div className="bg-zinc-950 border border-white/5 p-8 rounded-2xl text-center shadow-xl">
+                   <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">No performance tape uploaded.</p>
+                 </div>
+               )}
+            </div>
+
+            <div className="space-y-4 mt-8">
                <h3 className="text-lg font-black uppercase text-white tracking-tight italic flex items-center gap-3 border-b border-white/5 pb-4">
                  <ExternalLink className="w-5 h-5 text-[#E31837]" /> Media Reel
                </h3>

@@ -88,8 +88,8 @@ export function CareerPage() {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
 
-    if (file.size > 50 * 1024 * 1024) {
-      alert("Video file too large. Max 50MB.");
+    if (file.size > 200 * 1024 * 1024) {
+      alert("Video file too large. Max 200MB.");
       return;
     }
 
@@ -516,7 +516,7 @@ export function CareerPage() {
                            </div>
                            
                            <div className="space-y-2">
-                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Video (Max 50MB)</label>
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Video (Max 200MB)</label>
                              <div className="flex items-center gap-4">
                                <input type="file" ref={videoFileRef} onChange={handleVideoUpload} className="hidden" accept="video/*" />
                                <button type="button" onClick={() => videoFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Video</button>
@@ -664,7 +664,33 @@ export function CareerPage() {
                 <h2 className="text-2xl font-black uppercase text-white mb-2 flex items-center gap-2 italic tracking-tighter"><Zap className="w-6 h-6 text-yellow-500 fill-yellow-500" /> FightNet Pro</h2>
                 <p className="text-zinc-400 mb-4 text-sm max-w-lg">Unlimited tape uploads, premium analytics, direct messaging to sponsors, and priority agent review process.</p>
                 <div className="text-[#E31837] font-black text-3xl tracking-tighter mb-4">$9.99<span className="text-[10px] text-zinc-500 font-sans uppercase tracking-widest ml-1">/mo</span></div>
-                <button className="bg-white text-black px-6 py-2 font-bold uppercase tracking-tighter text-[11px] rounded hover:bg-zinc-200 transition">Upgrade to Pro</button>
+                <button 
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          successUrl: window.location.href,
+                          cancelUrl: window.location.href,
+                          customerEmail: currentUser?.email || ''
+                        })
+                      });
+                      const data = await response.json();
+                      if (data.url) {
+                        window.location.href = data.url;
+                      } else {
+                        alert(data.error || 'Checkout failed. Ensure SQUARE_ACCESS_TOKEN is configured.');
+                      }
+                    } catch (error) {
+                      console.error(error);
+                      alert('Failed to initiate checkout.');
+                    }
+                  }}
+                  className="bg-white text-black px-6 py-2 font-bold uppercase tracking-tighter text-[11px] rounded hover:bg-zinc-200 transition"
+                >
+                  Upgrade to Pro
+                </button>
               </div>
               <div className="hidden md:block w-32 h-32 rounded-full border border-zinc-800 overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-500">
                  <div className="absolute inset-0 bg-cover bg-center mix-blend-screen" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1599552611410-ded85cb2cb39?w=300&q=80)'}}></div>
