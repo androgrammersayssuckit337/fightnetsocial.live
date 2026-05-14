@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Send } from 'lucide-react';
+import { motion } from 'motion/react';
 import { db, auth } from '../../firebase';
 import { collection, query, where, getDocs, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -238,13 +239,15 @@ export function MessagesPage() {
                   placeholder="Transmit message..."
                   className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-[#E31837]"
                 />
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   type="submit" 
                   disabled={!newMessage.trim()} 
                   className="bg-[#E31837] text-white p-3 rounded-xl hover:bg-red-700 disabled:opacity-50 transition"
                 >
                   <Send className="w-4 h-4" />
-                </button>
+                </motion.button>
              </form>
            </>
          ) : (

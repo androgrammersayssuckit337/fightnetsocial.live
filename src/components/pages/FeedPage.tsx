@@ -20,6 +20,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import ReactPlayer from 'react-player';
 
 interface Post {
@@ -394,20 +395,30 @@ export function FeedPage() {
                         }}
                       />
                    </div>
-                   <button 
+                   <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     type="submit" 
                     disabled={isSubmitting || (!newPostContent.trim() && !fileInputRef.current?.files?.[0])}
                     className="bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
                    >
                      {isSubmitting ? 'Locking in...' : 'Publish'}
-                   </button>
+                   </motion.button>
                 </div>
               </div>
             </div>
           </form>
         <div className="space-y-12">
+          <AnimatePresence>
           {posts.map(post => (
-            <div key={post.id} className="group relative bg-[#0a0a0a] animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <motion.div 
+              key={post.id} 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="group relative bg-[#0a0a0a]"
+            >
               {/* Post Header */}
               <div className="flex items-start justify-between mb-4">
                  <div className="flex items-center gap-4">
@@ -526,32 +537,46 @@ export function FeedPage() {
                         </div>
                       )}
                       
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setOpenReactionPostId(post.id === openReactionPostId ? null : post.id)}
-                        className={`flex items-center gap-2.5 transition-all group/stat ${post.reactions?.[currentUser?.uid || ''] ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
+                        className={`flex items-center gap-2.5 transition-all group/stat relative ${post.reactions?.[currentUser?.uid || ''] ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
                       >
-                         <span className="text-xl leading-none group-hover/stat:scale-110 transition-transform">
+                         <span className="text-xl leading-none transition-transform">
                             {post.reactions?.[currentUser?.uid || ''] ? post.reactions[currentUser?.uid || ''] : '🤍'}
                          </span>
                          <span className="text-xs font-black tracking-tighter uppercase ml-1">React</span>
-                      </button>
+                      </motion.button>
                    </div>
 
-                   <button 
+                   <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleLike(post.id)}
-                    className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat"
+                    className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat relative"
                    >
-                     <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} group-hover/stat:scale-110 transition-transform`} />
+                     <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} transition-transform`} />
                      <span className="text-xs font-black tracking-tighter">{post.likesCount || ''} {post.likesCount === 1 ? 'Like' : 'Likes'}</span>
-                   </button>
-                   <button onClick={() => handleToggleComments(post.id)} className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
-                     <MessageSquare className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                   </motion.button>
+                   <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleToggleComments(post.id)} 
+                    className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat relative"
+                   >
+                     <MessageSquare className="w-5 h-5 transition-transform" />
                      <span className="text-xs font-black tracking-tighter">{post.commentsCount || ''} {post.commentsCount === 1 ? 'Comment' : 'Comments'}</span>
-                   </button>
-                   <button onClick={() => handleShare(post.id)} className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat">
-                     <Share2 className="w-5 h-5 group-hover/stat:scale-110 transition-transform" />
+                   </motion.button>
+                   <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleShare(post.id)} 
+                    className="flex items-center gap-2.5 text-zinc-500 hover:text-white transition-all group/stat relative"
+                   >
+                     <Share2 className="w-5 h-5 transition-transform" />
                      <span className="text-xs font-black tracking-tighter uppercase tracking-widest text-[10px] ml-1">Send</span>
-                   </button>
+                   </motion.button>
                  </div>
               </div>
 
@@ -567,13 +592,15 @@ export function FeedPage() {
                       className="flex-1 bg-zinc-900 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-white/30 transition-colors"
                       disabled={isSubmittingComment}
                     />
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       type="submit" 
                       disabled={!newCommentText.trim() || isSubmittingComment}
                       className="text-[#E31837] font-black uppercase text-xs tracking-wider disabled:opacity-50"
                     >
                       Post
-                    </button>
+                    </motion.button>
                   </form>
 
                   <div className="space-y-4">
@@ -601,7 +628,7 @@ export function FeedPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
 
           {posts.length === 0 && (
@@ -611,6 +638,7 @@ export function FeedPage() {
               <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold">Be the first to leave a mark on the feed.</p>
             </div>
           )}
+          </AnimatePresence>
         </div>
 
         {/* Quick News Bar */}

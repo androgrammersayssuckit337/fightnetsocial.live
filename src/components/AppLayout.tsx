@@ -1,8 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Settings, Hexagon } from 'lucide-react';
-import { motion } from 'motion/react';
+import { LogOut, Settings, Hexagon, Home, Users, Landmark, MessageSquare, MapPin, Calendar, ShoppingCart, TrendingUp, Briefcase } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { FeedPage } from './pages/FeedPage';
 import { LandingPage } from './pages/LandingPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -25,88 +25,81 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export function AppLayout() {
   const { logout, userProfile } = useAuth();
   const location = useLocation();
-  const carouselRef = React.useRef<HTMLDivElement>(null);
-  const [dragConstraints, setDragConstraints] = React.useState({ left: 0, right: 0 });
 
   const navItems = [
-    { label: 'Main Feed', path: '/app' },
-    { label: 'Network', path: '/app/network' },
-    { label: 'Investors & Community', path: '/app/investors' },
-    { label: 'Messenger', path: '/app/messages' },
-    { label: 'Gym Locator', path: '/app/gyms' },
-    { label: 'Schedules', path: '/app/schedules' },
-    { label: 'FightNet Shop', path: '/app/store' },
-    { label: 'Settings', path: '/app/settings' },
+    { label: 'Main Feed', path: '/app', icon: Home },
+    { label: 'Network', path: '/app/network', icon: Users },
+    { label: 'Investors & Community', path: '/app/investors', icon: Landmark },
+    { label: 'Messenger', path: '/app/messages', icon: MessageSquare },
+    { label: 'Gym Locator', path: '/app/gyms', icon: MapPin },
+    { label: 'Schedules', path: '/app/schedules', icon: Calendar },
+    { label: 'FightNet Shop', path: '/app/store', icon: ShoppingCart },
+    { label: 'Settings', path: '/app/settings', icon: Settings },
   ];
   
   const fighterTools = [
-    { label: 'Career Path', path: '/app/career' },
-    { label: 'Agent Portal', path: '/app/sponsors' },
+    { label: 'Career Path', path: '/app/career', icon: TrendingUp },
+    { label: 'Agent Portal', path: '/app/sponsors', icon: Briefcase },
   ];
 
-  React.useEffect(() => {
-    const updateConstraints = () => {
-      if (carouselRef.current) {
-        setDragConstraints({
-          right: 0,
-          left: -(carouselRef.current.scrollWidth - carouselRef.current.offsetWidth)
-        });
-      }
-    };
-    updateConstraints();
-    window.addEventListener('resize', updateConstraints);
-    return () => window.removeEventListener('resize', updateConstraints);
-  }, []);
-
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 flex flex-col border-b md:border-b-0 md:border-r border-[#222] bg-[#0a0a0a] z-40 order-2 md:order-1 shrink-0 pb-safe md:pb-0">
-        <div className="hidden md:block p-6 border-b border-[#222]">
-          <h1 className="text-2xl font-black tracking-tighter text-[#E31837] italic">FIGHTNET</h1>
-          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">The Combat Network</p>
+    <div className="flex h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
+      {/* Sidebar fixed to the Left on all views */}
+      <aside className="w-16 md:w-64 flex flex-col border-r border-[#222] bg-[#0a0a0a] z-40 shrink-0 pb-safe md:pb-0">
+        <div className="h-16 flex items-center justify-center md:justify-start md:px-6 border-b border-[#222] shrink-0">
+          <h1 className="text-2xl font-black tracking-tighter text-[#E31837] italic hidden md:block">FIGHTNET</h1>
+          <h1 className="text-lg font-black tracking-tighter text-[#E31837] italic md:hidden">FN</h1>
         </div>
         
-        <nav className="flex-1 py-4 space-y-1 overflow-y-auto hidden md:block">
+        <nav className="flex-1 py-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center px-6 py-2 transition-colors ${
+                title={item.label}
+                className={`flex items-center justify-center md:justify-start px-0 md:px-6 py-3 transition-colors group ${
                   isActive 
-                    ? 'bg-zinc-900 border-l-4 border-[#E31837] text-white' 
+                    ? 'md:bg-zinc-900 border-l-4 border-[#E31837] text-white bg-zinc-900/50' 
                     : 'text-zinc-400 hover:bg-zinc-900 hover:text-white border-l-4 border-transparent'
                 }`}
               >
-                <span className={`text-sm font-semibold ${!isActive && 'italic'}`}>{item.label}</span>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#E31837]' : 'text-zinc-500 group-hover:text-white transition-colors'}`} />
+                <span className={`text-sm font-semibold ml-4 hidden md:block ${!isActive && 'italic'}`}>{item.label}</span>
               </Link>
             );
           })}
           
-          <div className="pt-4 pb-2 px-6 text-[10px] uppercase tracking-widest text-zinc-600 font-bold">Fighter Tools</div>
+          <div className="pt-6 pb-2 px-0 md:px-6 text-center md:text-left text-[8px] md:text-[10px] uppercase tracking-widest text-zinc-600 font-bold overflow-hidden">
+            <span className="hidden md:inline">Fighter Tools</span>
+            <span className="md:hidden block truncate">Tools</span>
+          </div>
           {fighterTools.map((item) => {
              const isActive = location.pathname === item.path;
+             const Icon = item.icon;
              return (
                <Link
                  key={item.path}
                  to={item.path}
-                 className={`flex items-center px-6 py-2 transition-colors ${
+                 title={item.label}
+                 className={`flex items-center justify-center md:justify-start px-0 md:px-6 py-3 transition-colors group ${
                    isActive 
-                     ? 'bg-zinc-900 border-l-4 border-[#E31837] text-white' 
+                     ? 'md:bg-zinc-900 border-l-4 border-[#E31837] text-white bg-zinc-900/50' 
                      : 'text-zinc-400 hover:bg-zinc-900 hover:text-white border-l-4 border-transparent'
                  }`}
                >
-                 <span className={`text-sm font-semibold ${!isActive && 'italic'}`}>{item.label}</span>
+                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[#E31837]' : 'text-zinc-500 group-hover:text-white transition-colors'}`} />
+                 <span className={`text-sm font-semibold ml-4 hidden md:block ${!isActive && 'italic'}`}>{item.label}</span>
                </Link>
              );
           })}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="shrink-0 flex flex-col">
           {userProfile?.role === 'fighter' && (
-            <div className="p-4 bg-zinc-900 m-4 rounded border border-zinc-800">
+            <div className="hidden md:block p-4 bg-zinc-900 m-4 rounded border border-zinc-800">
               <p className="text-[11px] text-zinc-400 mb-2 uppercase tracking-wide">Pro Access</p>
               <p className="text-lg font-bold leading-none mb-1">$9.99/mo</p>
               <p className="text-[10px] text-zinc-500 mb-3">Unlock Agents & Scouting</p>
@@ -114,10 +107,10 @@ export function AppLayout() {
             </div>
           )}
           
-          <Link to="/app/career" className="p-4 border-t border-[#222] flex items-center justify-between hover:bg-zinc-900 transition-colors cursor-pointer group">
+          <Link to="/app/career" title="Profile & Career" className="p-3 md:p-4 border-t border-[#222] flex items-center justify-center md:justify-start hover:bg-zinc-900 transition-colors cursor-pointer group">
              <div className="flex items-center space-x-3">
-               <img src={userProfile?.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile?.displayName}&background=0c0c0c&color=fff`} className="w-8 h-8 rounded-full border border-zinc-700 object-cover" alt="Avatar"/>
-               <div className="overflow-hidden">
+               <img src={userProfile?.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile?.displayName}&background=0c0c0c&color=fff`} className="w-8 h-8 rounded-full border border-zinc-700 object-cover shrink-0" alt="Avatar"/>
+               <div className="overflow-hidden hidden md:block">
                  <p className="font-bold text-xs truncate max-w-[100px] group-hover:text-[#E31837] transition-colors">{userProfile?.displayName}</p>
                  <p className="text-[10px] text-zinc-500 uppercase">{userProfile?.role}</p>
                </div>
@@ -127,74 +120,41 @@ export function AppLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col order-1 md:order-2 overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-[#222] flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0a0a0a]">
           <div className="flex items-center space-x-6">
-            <div className="md:hidden text-[#E31837] font-black italic tracking-tighter text-xl">FN</div>
+            <div className="md:hidden text-zinc-500 text-[10px] font-mono uppercase truncate max-w-[150px]">[ Live: amateur_04 ]</div>
             <div className="hidden md:block text-zinc-500 text-xs font-mono uppercase">[ Live Stream: amateur_circuit_04 ]</div>
           </div>
           <div className="flex items-center space-x-4">
             {!userProfile?.profileImageUrl && (
-              <Link to="/app/career" className="hidden md:flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-[#E31837]/30 text-[#E31837] text-[9px] font-black uppercase rounded animate-pulse">
+              <Link to="/app/career" className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-[#E31837]/30 text-[#E31837] text-[9px] font-black uppercase rounded animate-pulse">
                 Complete Profile
               </Link>
             )}
-            <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors">
+            <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors md:hidden">
               <Settings className="w-5 h-5" />
             </Link>
           </div>
         </header>
 
-        {/* Revolving Carousel Mobile Nav */}
-        <div className="md:hidden bg-[#0a0a0a] border-b border-white/5 overflow-hidden">
-          <motion.div 
-            ref={carouselRef}
-            className="flex items-center gap-8 px-6 py-4 overflow-x-auto scrollbar-hide"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            drag="x"
-            dragConstraints={dragConstraints}
-          >
-            {[...navItems, ...fighterTools].map((item, idx) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`shrink-0 flex flex-col items-center gap-1 group relative`}
-                >
-                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic transition-all duration-300 ${
-                    isActive ? 'text-white scale-110' : 'text-zinc-600 group-hover:text-zinc-400'
-                  }`}>
-                    {item.label}
-                  </span>
-                  {isActive && (
-                    <motion.div 
-                      layoutId="activeTab"
-                      className="absolute -bottom-1 h-0.5 w-[120%] bg-[#E31837] shadow-[0_0_10px_#E31837]"
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </motion.div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<FeedPage />} />
-            <Route path="/network" element={<NetworkPage />} />
-            <Route path="/messages" element={<MessagesPage />} />
-            <Route path="/sponsors" element={<SponsorsPage />} />
-            <Route path="/gyms" element={<GymLocatorPage />} />
-            <Route path="/schedules" element={<SchedulesPage />} />
-            <Route path="/store" element={<StorePage />} />
-            <Route path="/career" element={<CareerPage />} />
-            <Route path="/investors" element={<InvestorsPage />} />
-            <Route path="/profile/:userId" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/app" />} />
-          </Routes>
+        <div className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto custom-scrollbar relative overflow-x-hidden">
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><FeedPage /></motion.div>} />
+              <Route path="/network" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><NetworkPage /></motion.div>} />
+              <Route path="/messages" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><MessagesPage /></motion.div>} />
+              <Route path="/sponsors" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><SponsorsPage /></motion.div>} />
+              <Route path="/gyms" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><GymLocatorPage /></motion.div>} />
+              <Route path="/schedules" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><SchedulesPage /></motion.div>} />
+              <Route path="/store" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><StorePage /></motion.div>} />
+              <Route path="/career" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><CareerPage /></motion.div>} />
+              <Route path="/investors" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><InvestorsPage /></motion.div>} />
+              <Route path="/profile/:userId" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><ProfilePage /></motion.div>} />
+              <Route path="/settings" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><SettingsPage /></motion.div>} />
+              <Route path="*" element={<Navigate to="/app" />} />
+            </Routes>
+          </AnimatePresence>
         </div>
       </main>
     </div>
