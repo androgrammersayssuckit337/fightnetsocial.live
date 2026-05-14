@@ -102,6 +102,25 @@ export function FeedPage() {
     return unsubscribe;
   }, [currentUser]);
 
+  const getMimeType = (file: File) => {
+    if (file.type) return file.type;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'mp4': return 'video/mp4';
+      case 'mov': return 'video/quicktime';
+      case 'avi': return 'video/x-msvideo';
+      case 'wmv': return 'video/x-ms-wmv';
+      case 'webm': return 'video/webm';
+      case 'mkv': return 'video/x-matroska';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      default: return 'application/octet-stream';
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!currentUser) return;
     setIsSubmitting(true);
@@ -112,7 +131,7 @@ export function FeedPage() {
     
     console.log("Starting upload to:", fileName);
     const metadata = {
-      contentType: file.type,
+      contentType: getMimeType(file),
     };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
@@ -160,7 +179,8 @@ export function FeedPage() {
         mediaUrl = await handleFileUpload(file);
       }
 
-      const isVideo = file ? Boolean(file.type.startsWith('video') || file.name.toLowerCase().match(/\.(mp4|mov|wmv|avi|mkv|webm)$/)) : false;
+      const detectedMimeType = file ? getMimeType(file) : '';
+      const isVideo = file ? Boolean(detectedMimeType.startsWith('video') || file.name.toLowerCase().match(/\.(mp4|mov|wmv|avi|mkv|webm)$/)) : false;
 
       await addDoc(collection(db, 'posts'), {
         authorId: currentUser.uid,

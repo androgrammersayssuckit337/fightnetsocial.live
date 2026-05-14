@@ -84,6 +84,26 @@ export function CareerPage() {
     fetchVideos();
   }, [currentUser, userProfile?.role]);
 
+  const getMimeType = (file: File) => {
+    if (file.type) return file.type;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'mp4': return 'video/mp4';
+      case 'mov': return 'video/quicktime';
+      case 'avi': return 'video/x-msvideo';
+      case 'wmv': return 'video/x-ms-wmv';
+      case 'webm': return 'video/webm';
+      case 'mkv': return 'video/x-matroska';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      case 'gif': return 'image/gif';
+      case 'webp': return 'image/webp';
+      case 'pdf': return 'application/pdf';
+      default: return 'application/octet-stream';
+    }
+  };
+
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
@@ -97,7 +117,7 @@ export function CareerPage() {
     const fileName = `videos/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: file.type };
+    const metadata = { contentType: getMimeType(file) };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
@@ -166,7 +186,7 @@ export function CareerPage() {
     const fileName = `contracts/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: file.type };
+    const metadata = { contentType: getMimeType(file) };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
@@ -237,7 +257,7 @@ export function CareerPage() {
     const storageRef = ref(storage, fileName);
     
     console.log("uploading to:", fileName);
-    const metadata = { contentType: file.type };
+    const metadata = { contentType: getMimeType(file) };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
