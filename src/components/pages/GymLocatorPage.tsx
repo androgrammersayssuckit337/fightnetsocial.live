@@ -2,9 +2,11 @@ import React from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 
 const MOCK_GYMS = [
-  { id: 1, name: 'Elite MMA Gym', distance: '2.3 mi', type: 'MMA, BJJ, Muay Thai' },
-  { id: 2, name: 'Striking House', distance: '5.1 mi', type: 'Boxing, Kickboxing' },
-  { id: 3, name: 'Ground Team Academy', distance: '8.4 mi', type: 'BJJ (No-Gi/Gi)' },
+  { id: 1, name: 'P.E. Training Center', distance: '1.2 mi', type: 'MMA, BJJ, Muay Thai', location: 'Lake Charles, LA' },
+  { id: 2, name: 'Gracie Barra Lake Charles', distance: '3.5 mi', type: 'BJJ, Self Defense', location: 'Lake Charles, LA' },
+  { id: 3, name: 'Champion Factory MMA', distance: '32.1 mi', type: 'MMA, Striking', location: 'Lafayette, LA' },
+  { id: 4, name: 'Headkicks Martial Arts', distance: '35.4 mi', type: 'Muay Thai, Kickboxing', location: 'Abbeville, LA' },
+  { id: 5, name: 'Ignite Fitness & MMA', distance: '31.8 mi', type: 'Fitness, BJJ', location: 'Lafayette, LA' },
 ];
 
 export function GymLocatorPage() {

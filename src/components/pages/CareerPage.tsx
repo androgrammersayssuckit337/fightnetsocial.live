@@ -97,7 +97,8 @@ export function CareerPage() {
     const fileName = `videos/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const metadata = { contentType: file.type };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
       (snapshot) => {
@@ -165,7 +166,8 @@ export function CareerPage() {
     const fileName = `contracts/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const metadata = { contentType: file.type };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
       (snapshot) => {
@@ -235,7 +237,8 @@ export function CareerPage() {
     const storageRef = ref(storage, fileName);
     
     console.log("uploading to:", fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const metadata = { contentType: file.type };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
       (snapshot) => {

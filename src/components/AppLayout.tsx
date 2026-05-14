@@ -1,7 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Hexagon } from 'lucide-react';
+import { motion } from 'motion/react';
 import { FeedPage } from './pages/FeedPage';
 import { LandingPage } from './pages/LandingPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -13,6 +14,7 @@ import { SchedulesPage } from './pages/SchedulesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NetworkPage } from './pages/NetworkPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { InvestorsPage } from './pages/InvestorsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -23,10 +25,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export function AppLayout() {
   const { logout, userProfile } = useAuth();
   const location = useLocation();
+  const carouselRef = React.useRef<HTMLDivElement>(null);
+  const [dragConstraints, setDragConstraints] = React.useState({ left: 0, right: 0 });
 
   const navItems = [
     { label: 'Main Feed', path: '/app' },
     { label: 'Network', path: '/app/network' },
+    { label: 'Investors & Community', path: '/app/investors' },
     { label: 'Messenger', path: '/app/messages' },
     { label: 'Gym Locator', path: '/app/gyms' },
     { label: 'Schedules', path: '/app/schedules' },
@@ -38,6 +43,20 @@ export function AppLayout() {
     { label: 'Career Path', path: '/app/career' },
     { label: 'Agent Portal', path: '/app/sponsors' },
   ];
+
+  React.useEffect(() => {
+    const updateConstraints = () => {
+      if (carouselRef.current) {
+        setDragConstraints({
+          right: 0,
+          left: -(carouselRef.current.scrollWidth - carouselRef.current.offsetWidth)
+        });
+      }
+    };
+    updateConstraints();
+    window.addEventListener('resize', updateConstraints);
+    return () => window.removeEventListener('resize', updateConstraints);
+  }, []);
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[#0a0a0a] text-white font-sans overflow-hidden">
@@ -85,15 +104,6 @@ export function AppLayout() {
           })}
         </nav>
 
-        {/* Mobile Nav (simplified representation) */}
-        <div className="md:hidden flex w-full justify-around items-center py-3 bg-zinc-900 border-t border-[#222]">
-          {navItems.slice(0, 5).map((item) => (
-             <Link key={item.path} to={item.path} className={`text-xs font-bold uppercase ${location.pathname === item.path ? 'text-[#E31837]' : 'text-zinc-500'}`}>
-                {item.label.split(' ')[0]}
-             </Link>
-          ))}
-        </div>
-
         <div className="hidden md:block">
           {userProfile?.role === 'fighter' && (
             <div className="p-4 bg-zinc-900 m-4 rounded border border-zinc-800">
@@ -134,6 +144,41 @@ export function AppLayout() {
             </Link>
           </div>
         </header>
+
+        {/* Revolving Carousel Mobile Nav */}
+        <div className="md:hidden bg-[#0a0a0a] border-b border-white/5 overflow-hidden">
+          <motion.div 
+            ref={carouselRef}
+            className="flex items-center gap-8 px-6 py-4 overflow-x-auto scrollbar-hide"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            drag="x"
+            dragConstraints={dragConstraints}
+          >
+            {[...navItems, ...fighterTools].map((item, idx) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`shrink-0 flex flex-col items-center gap-1 group relative`}
+                >
+                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic transition-all duration-300 ${
+                    isActive ? 'text-white scale-110' : 'text-zinc-600 group-hover:text-zinc-400'
+                  }`}>
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="activeTab"
+                      className="absolute -bottom-1 h-0.5 w-[120%] bg-[#E31837] shadow-[0_0_10px_#E31837]"
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </motion.div>
+        </div>
         
         <div className="flex-1 overflow-y-auto">
           <Routes>
@@ -145,6 +190,7 @@ export function AppLayout() {
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/store" element={<StorePage />} />
             <Route path="/career" element={<CareerPage />} />
+            <Route path="/investors" element={<InvestorsPage />} />
             <Route path="/profile/:userId" element={<ProfilePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/app" />} />

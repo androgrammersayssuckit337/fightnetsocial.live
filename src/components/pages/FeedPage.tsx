@@ -111,7 +111,10 @@ export function FeedPage() {
     const storageRef = ref(storage, fileName);
     
     console.log("Starting upload to:", fileName);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const metadata = {
+      contentType: file.type,
+    };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     return new Promise<string>((resolve, reject) => {
       uploadTask.on('state_changed', 
@@ -122,7 +125,7 @@ export function FeedPage() {
         }, 
         (error) => {
           console.error("Firebase Storage Upload Error:", error);
-          alert(`Upload failed: ${error.message}. Large files (>100MB) are blocked.`);
+          alert(`Upload failed: ${error.message}. Large files (>200MB) are blocked.`);
           reject(error);
         }, 
         async () => {
@@ -143,9 +146,14 @@ export function FeedPage() {
     e.preventDefault();
     if ((!newPostContent.trim() && !fileInputRef.current?.files?.[0]) || !currentUser) return;
 
+    const file = fileInputRef.current?.files?.[0];
+    if (file && file.size > 200 * 1024 * 1024) {
+      alert("Performance tape too heavy. Max 200MB.");
+      return;
+    }
+
     setIsSubmitting(true);
     let mediaUrl = '';
-    const file = fileInputRef.current?.files?.[0];
 
     try {
       if (file) {

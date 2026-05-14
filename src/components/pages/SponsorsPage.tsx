@@ -6,9 +6,38 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 
 const MOCK_SPONSORS = [
-  { id: '1', name: 'IRON PEAK Performance', baseMatch: 60, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&q=80', req: '7-0 Record minimum', website: 'https://ironpeakperformance.example.com' },
-  { id: '2', name: 'VTX Supplements', baseMatch: 75, img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=300&q=80', req: 'Pro Fighters', website: 'https://vtxsupplements.example.com' },
-  { id: '3', name: 'Grind Athletics', baseMatch: 80, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&q=80', req: 'Active profile', website: 'https://grindathletics.example.com' }
+  { 
+    id: 'aka', 
+    name: 'AKA (American Kombat Alliance)', 
+    baseMatch: 70, 
+    img: 'https://images.unsplash.com/photo-1595079676339-1534801ad6cf?w=300&q=80', 
+    req: 'Amateur/Pro active in LA', 
+    website: 'https://aka-fights.com' 
+  },
+  { 
+    id: 'coushatta', 
+    name: 'Coushatta Casino Resort', 
+    baseMatch: 50, 
+    img: 'https://images.unsplash.com/photo-1596567100027-66aa33a647e3?w=300&q=80', 
+    req: 'High record fighters', 
+    website: 'https://www.coushattacasinoresort.com' 
+  },
+  { 
+    id: 'navarre', 
+    name: 'Navarre Auto Group', 
+    baseMatch: 40, 
+    img: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&q=80', 
+    req: 'Local Lake Charles influence', 
+    website: 'https://www.billynavarre.com' 
+  },
+  { 
+    id: '929lake', 
+    name: '92.9 The Lake (SWLA)', 
+    baseMatch: 60, 
+    img: 'https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300&q=80', 
+    req: 'Social media presence', 
+    website: 'https://929thelake.com' 
+  }
 ];
 
 function calculateMatchPercentage(profile: any, sponsor: any) {
@@ -16,14 +45,16 @@ function calculateMatchPercentage(profile: any, sponsor: any) {
   let score = sponsor.baseMatch;
   const wins = parseInt(profile.record?.split('-')[0]) || 0;
   
-  if (sponsor.id === '1') { // wants wins
-    if (wins >= 7) score += 35;
-    else score += (wins * 5);
-  } else if (sponsor.id === '2') {
-    if (profile.isPro) score += 20;
-    if (wins >= 3) score += 5;
-  } else if (sponsor.id === '3') {
-    if (profile.bio?.length > 20) score += 15;
+  if (sponsor.id === 'aka') {
+    if (wins >= 1) score += 20;
+    if (profile.role === 'fighter') score += 10;
+  } else if (sponsor.id === 'coushatta') {
+    if (profile.isPro) score += 30;
+    if (wins >= 5) score += 15;
+  } else if (sponsor.id === 'navarre') {
+    if (profile.bio?.toLowerCase().includes('lake charles')) score += 40;
+  } else if (sponsor.id === '929lake') {
+    if (profile.bio?.length > 50) score += 25;
   }
   
   return Math.min(99, score);
