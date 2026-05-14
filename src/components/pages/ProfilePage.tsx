@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ReactPlayer from 'react-player';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2 } from 'lucide-react';
@@ -367,10 +368,12 @@ export function ProfilePage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                    {videoClips.map(clip => (
                       <div key={clip.id} className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
-                         <video 
-                           src={clip.videoUrl} 
-                           className="w-full h-full object-cover"
+                         <ReactPlayer 
+                           url={clip.videoUrl} 
+                           width="100%"
+                           height="100%"
                            controls
+                           playsinline
                          />
                          <div className="absolute top-2 left-2 z-10 pointer-events-none">
                             <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>

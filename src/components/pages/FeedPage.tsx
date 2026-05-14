@@ -20,6 +20,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
+import ReactPlayer from 'react-player';
 
 interface Post {
   id: string;
@@ -357,9 +358,15 @@ export function FeedPage() {
                   className="w-full bg-transparent text-lg font-medium text-white placeholder-zinc-700 underline-offset-8 decoration-[#E31837]/20 focus:outline-none resize-none mb-4 min-h-[100px]"
                 />
                 
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                   <div className="w-full bg-zinc-900 h-1.5 rounded-full mb-4 overflow-hidden">
-                     <div className="bg-[#E31837] h-full transition-all shadow-[0_0_10px_#E31837]" style={{ width: `${uploadProgress}%` }}></div>
+                {uploadProgress > 0 && (
+                   <div className="w-full mb-4">
+                     <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-[#E31837] mb-2">
+                       <span>{uploadProgress === 100 ? 'Processing...' : 'Uploading Media'}</span>
+                       <span>{Math.round(uploadProgress)}%</span>
+                     </div>
+                     <div className="w-full bg-zinc-900 h-2 rounded-full overflow-hidden">
+                       <div className="bg-[#E31837] h-full transition-all duration-300 shadow-[0_0_10px_#E31837]" style={{ width: `${uploadProgress}%` }}></div>
+                     </div>
                    </div>
                 )}
 
@@ -443,12 +450,21 @@ export function FeedPage() {
                {post.mediaUrl && (
                   <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-zinc-950 group-hover:border-[#E31837]/30 transition-colors shadow-2xl">
                     {post.mediaType === 'video' ? (
-                      <div className="relative aspect-video flex items-center justify-center bg-black">
-                        <video 
-                          src={post.mediaUrl} 
-                          className="w-full h-full object-contain"
+                      <div className="relative aspect-video flex items-center justify-center bg-black overflow-hidden rounded-xl">
+                        <ReactPlayer
+                          url={post.mediaUrl}
+                          width="100%"
+                          height="100%"
                           controls
-                          playsInline
+                          playsinline
+                          pip
+                          config={{
+                            file: {
+                              attributes: {
+                                controlsList: 'nodownload'
+                              }
+                            }
+                          }}
                         />
                       </div>
                     ) : (

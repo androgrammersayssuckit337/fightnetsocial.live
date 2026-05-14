@@ -7,6 +7,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { motion, AnimatePresence } from 'motion/react';
 import { PromoGenerator } from '../PromoGenerator';
+import ReactPlayer from 'react-player';
 
 export function CareerPage() {
   const { currentUser, userProfile } = useAuth();
@@ -543,7 +544,7 @@ export function CareerPage() {
                              <div className="flex items-center gap-4">
                                <input type="file" ref={videoFileRef} onChange={handleVideoUpload} className="hidden" accept="video/*" />
                                <button type="button" onClick={() => videoFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Video</button>
-                               {videoUploadProgress > 0 && videoUploadProgress < 100 && <span className="text-xs text-[#E31837] font-bold">{Math.round(videoUploadProgress)}% Uploading...</span>}
+                               {videoUploadProgress > 0 && <span className="text-xs text-[#E31837] font-bold">{videoUploadProgress === 100 ? 'Processing...' : `${Math.round(videoUploadProgress)}% Uploading...`}</span>}
                                {videoData.videoUrl && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Ready</span>}
                              </div>
                            </div>
@@ -564,10 +565,12 @@ export function CareerPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                        {videoClips.map(clip => (
                           <div key={clip.id} className="group/clip relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
-                             <video 
-                               src={clip.videoUrl} 
-                               className="w-full h-full object-cover"
+                             <ReactPlayer 
+                               url={clip.videoUrl} 
+                               width="100%"
+                               height="100%"
                                controls
+                               playsinline
                              />
                              <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start opacity-0 group-hover/clip:opacity-100 transition-opacity">
                                 <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>

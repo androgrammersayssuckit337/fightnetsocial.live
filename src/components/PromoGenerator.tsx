@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Video, Loader2, Play } from 'lucide-react';
+import ReactPlayer from 'react-player';
 import { GoogleGenAI } from '@google/genai';
 
 interface PromoGeneratorProps {
@@ -188,12 +189,14 @@ export function PromoGenerator({ isOpen, onClose, fighterName }: PromoGeneratorP
                {videoBlobUrl && (
                  <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="aspect-video w-full bg-black rounded-xl overflow-hidden border border-white/10 relative shadow-2xl">
-                       <video 
-                         src={videoBlobUrl} 
+                       <ReactPlayer 
+                         url={videoBlobUrl} 
+                         width="100%"
+                         height="100%"
                          controls 
-                         autoPlay 
+                         playing 
                          loop 
-                         className="w-full h-full object-cover"
+                         playsinline
                        />
                        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur text-white px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
