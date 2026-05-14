@@ -24,87 +24,65 @@ export function PromoGenerator({ isOpen, onClose, fighterName }: PromoGeneratorP
       setError(null);
       setVideoUri(null);
       setVideoBlobUrl(null);
-      setProgressStatus('Checking access...');
-
-      // Follow the AI Studio window pattern for API key
-      const win = window as any;
-      if (win.aistudio && win.aistudio.hasSelectedApiKey) {
-        if (!(await win.aistudio.hasSelectedApiKey())) {
-          await win.aistudio.openSelectKey();
-        }
-      } else {
-        // Fallback for missing api key dialog in dev
-        console.warn("window.aistudio not available, relying on process.env.API_KEY");
-      }
-
-      // The key is injected to process.env.API_KEY or we can just pass empty config and let SDK pick it up
-      // In the preview environment, the SDK might just use process.env.API_KEY behind the scenes 
-      // or we have to pass process.env.API_KEY manually. Oh, wait, the instructions say:
-      // "The selected API key is available using process.env.API_KEY. It is injected automatically, so you do not need to modify the API key code."
-      // BUT, for Vite, process.env doesn't work directly on client unless we use `process.env` from Vite or `import.meta.env`. 
-      // Wait, "The selected API key is available using process.env.API_KEY. It is injected automatically, so you do not need to modify the API key code."
-      // In standard Vite, it's import.meta.env, but AI Studio polyfills process.env.API_KEY for this specific use case.
-      
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-         throw new Error("Missing API Key. Please configure your Gemini API Key.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-
       setProgressStatus('Initiating Veo generation...');
-      
-      let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-lite-generate-preview',
-        prompt: prompt,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: '16:9'
-        }
+
+      const startRes = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt })
       });
 
-      console.log('Video Generation started. Operation: ', operation.name);
+      if (!startRes.ok) {
+        const errData = await startRes.json().catch(() => null);
+        throw new Error(errData?.error || `Failed to start video generation: ${startRes.statusText}`);
+      }
 
-      while (!operation.done) {
+      const { operationName } = await startRes.json();
+      console.log('Video Generation started. Operation: ', operationName);
+
+      let done = false;
+      while (!done) {
         setProgressStatus('Rendering frames (this may take a few minutes)...');
         await new Promise(resolve => setTimeout(resolve, 10000));
-        operation = await ai.operations.getVideosOperation({ operation: operation });
+        
+        const statusRes = await fetch('/api/video-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operationName })
+        });
+        
+        if (!statusRes.ok) {
+          const errData = await statusRes.json().catch(() => null);
+          throw new Error(errData?.error || `Failed to check status: ${statusRes.statusText}`);
+        }
+        
+        const statusData = await statusRes.json();
+        done = statusData.done;
       }
 
-      setProgressStatus('Finalizing video generation...');
-      console.log('Video Generation complete. Operation: ', operation);
+      setProgressStatus('Downloading video...');
+      console.log('Video Generation complete. Operation: ', operationName);
 
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      
-      if (!downloadLink) {
-        throw new Error("Failed to retrieve generated video URI from response.");
-      }
-
-      setVideoUri(downloadLink);
-      setProgressStatus('Downloading generation...');
-
-      const response = await fetch(downloadLink, {
-        method: 'GET',
-        headers: {
-          'x-goog-api-key': apiKey,
-        },
+      const downloadRes = await fetch('/api/video-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operationName })
       });
 
-      if (!response.ok) {
-         throw new Error(`Failed to download video: ${response.statusText}`);
+      if (!downloadRes.ok) {
+         const errData = await downloadRes.json().catch(() => null);
+         throw new Error(errData?.error || `Failed to download video: ${downloadRes.statusText}`);
       }
 
-      const blob = await response.blob();
+      const blob = await downloadRes.blob();
       const objectUrl = URL.createObjectURL(blob);
       setVideoBlobUrl(objectUrl);
       setProgressStatus('');
 
     } catch (err: any) {
       console.error('Video generation error:', err);
-      // specific catch for 'entity was not found' -> reset key
-      if (err.message && err.message.includes('Requested entity was not found')) {
-        setError('Google Cloud API Error: Ensure you have an active GCP project with Vertex AI/Gemini billing enabled. You may need to re-select your key.');
+      if (err.message && err.message.includes('GEMINI_API_KEY missing')) {
+        setError('Missing GEMINI_API_KEY. Please set your Gemini API key in the platform settings to use Veo.');
       } else {
         setError(err.message || "An unexpected error occurred during video generation.");
       }

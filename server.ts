@@ -62,6 +62,100 @@ async function startServer() {
     }
   });
 
+  // Veo Video Generation API Routes
+  app.post("/api/generate-video", async (req, res) => {
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
+      }
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const { prompt } = req.body;
+
+      const operation = await ai.models.generateVideos({
+        model: 'veo-3.1-lite-generate-preview',
+        prompt: prompt,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: '16:9'
+        }
+      });
+      res.json({ operationName: operation.name });
+    } catch (error: any) {
+      console.error("Video Generation Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video-status", async (req, res) => {
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
+      }
+      const { GoogleGenAI, GenerateVideosOperation } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const { operationName } = req.body;
+
+      if (!operationName) return res.status(400).json({ error: "Missing operationName" });
+
+      const op = new GenerateVideosOperation();
+      op.name = operationName;
+      const updated = await ai.operations.getVideosOperation({ operation: op });
+      
+      res.json({ done: updated.done });
+    } catch (error: any) {
+      console.error("Video Status Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/video-download", async (req, res) => {
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
+      }
+      const { GoogleGenAI, GenerateVideosOperation } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const { operationName } = req.body;
+
+      if (!operationName) return res.status(400).json({ error: "Missing operationName" });
+
+      const op = new GenerateVideosOperation();
+      op.name = operationName;
+      const updated = await ai.operations.getVideosOperation({ operation: op });
+      
+      const uri = updated.response?.generatedVideos?.[0]?.video?.uri;
+      if (!uri) {
+        // Not ready or failed
+        return res.status(400).json({ error: "Video not ready or failed" });
+      }
+
+      const videoRes = await fetch(uri, {
+        headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      });
+
+      res.setHeader('Content-Type', 'video/mp4');
+      if (videoRes.body) {
+        /* Support Node stream pipe */
+        const reader = videoRes.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } else {
+        res.status(500).json({ error: "Unable to read video response stream" });
+      }
+    } catch (error: any) {
+      console.error("Video Download Error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });

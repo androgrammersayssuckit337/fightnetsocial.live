@@ -151,11 +151,11 @@ service cloud.firestore {
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) &&
-                        incoming().likesCount == existing().likesCount + 1
+                        incoming().likesCount == existing().get('likesCount', 0) + 1
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount']) &&
-                        incoming().commentsCount == existing().commentsCount + 1
+                        incoming().commentsCount == existing().get('commentsCount', 0) + 1
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['reactions']) &&
@@ -164,12 +164,12 @@ service cloud.firestore {
                           (isSignedIn() && isBot(incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().toRulesList()[0]))
                         ) &&
                         (
-                          incoming().reactions.size() > 0 // basic check
+                          incoming().reactions.size() >= 0 // basic check
                         )
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'reactions']) &&
-                        incoming().likesCount == existing().likesCount + 1 &&
+                        incoming().likesCount == existing().get('likesCount', 0) + 1 &&
                         (
                           incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) ||
                           (isSignedIn() && isBot(incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().toRulesList()[0]))
