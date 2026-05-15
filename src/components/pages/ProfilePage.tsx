@@ -381,7 +381,7 @@ export function ProfilePage() {
 
             <div className="space-y-4 mt-8">
                <h3 className="text-lg font-black uppercase text-white tracking-tight italic flex items-center gap-3 border-b border-white/5 pb-4">
-                 <ExternalLink className="w-5 h-5 text-[#E31837]" /> Training Reels & Tape
+                 <ExternalLink className="w-5 h-5 text-[#E31837]" /> Video Clips
                </h3>
 
                {loadingVideos ? (
@@ -391,15 +391,16 @@ export function ProfilePage() {
                ) : videoClips.length > 0 ? (
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                    {videoClips.map(clip => (
-                      <div key={clip.id} className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
+                      <div key={clip.id} className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5 group/clip">
                          <ReactPlayer 
                            url={clip.videoUrl} 
                            width="100%"
                            height="100%"
                            controls
                            playsinline
+                           light={clip.thumbnailUrl || true}
                          />
-                         <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                         <div className="absolute top-2 left-2 z-10 pointer-events-none opacity-0 group-hover/clip:opacity-100 transition-opacity">
                             <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>
                          </div>
                       </div>

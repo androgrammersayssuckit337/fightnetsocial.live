@@ -34,7 +34,9 @@ export function CareerPage() {
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [showAddVideo, setShowAddVideo] = useState(false);
   const videoFileRef = useRef<HTMLInputElement>(null);
+  const thumbnailFileRef = useRef<HTMLInputElement>(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [thumbnailUploadProgress, setThumbnailUploadProgress] = useState(0);
   const [videoData, setVideoData] = useState({
     title: '',
     videoUrl: '',
@@ -144,6 +146,45 @@ export function CareerPage() {
         } catch (err: any) {
           console.error("Error getting download URL:", err);
           setVideoUploadProgress(0);
+        }
+      }
+    );
+  };
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Thumbnail file too large. Max 5MB.");
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `thumbnails/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, fileName);
+    
+    const metadata = { contentType: getMimeType(file) };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setThumbnailUploadProgress(progress);
+      }, 
+      (error) => {
+        console.error("Thumbnail Upload Error:", error);
+        alert(`Upload failed: ${error.message}`);
+        setThumbnailUploadProgress(0);
+      }, 
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setVideoData(prev => ({ ...prev, thumbnailUrl: downloadURL }));
+          setThumbnailUploadProgress(0);
+        } catch (err: any) {
+          console.error("Error getting download URL:", err);
+          setThumbnailUploadProgress(0);
         }
       }
     );
@@ -556,7 +597,7 @@ export function CareerPage() {
                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
                      <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3">
                        <Video className="w-5 h-5 text-[#E31837]" />
-                       Training Reels & Tape
+                       Video Clips
                      </h2>
                      <button 
                        onClick={() => setShowAddVideo(!showAddVideo)}
@@ -583,9 +624,19 @@ export function CareerPage() {
                                {videoData.videoUrl && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Ready</span>}
                              </div>
                            </div>
+
+                           <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Thumbnail (Optional, Max 5MB)</label>
+                             <div className="flex items-center gap-4">
+                               <input type="file" ref={thumbnailFileRef} onChange={handleThumbnailUpload} className="hidden" accept="image/*" />
+                               <button type="button" onClick={() => thumbnailFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Thumbnail</button>
+                               {thumbnailUploadProgress > 0 && <span className="text-xs text-[#E31837] font-bold">{thumbnailUploadProgress === 100 ? 'Processing...' : `${Math.round(thumbnailUploadProgress)}% Uploading...`}</span>}
+                               {videoData.thumbnailUrl && <span className="text-xs text-green-500 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Ready</span>}
+                             </div>
+                           </div>
                         </div>
                         <div className="pt-2">
-                          <button type="submit" disabled={!videoData.videoUrl || (videoUploadProgress > 0 && videoUploadProgress < 100)} className="w-full bg-[#E31837] text-white font-black uppercase italic tracking-tighter text-sm px-6 py-4 rounded-xl hover:bg-red-700 transition-all disabled:opacity-50">
+                          <button type="submit" disabled={!videoData.videoUrl || (videoUploadProgress > 0 && videoUploadProgress < 100) || (thumbnailUploadProgress > 0 && thumbnailUploadProgress < 100)} className="w-full bg-[#E31837] text-white font-black uppercase italic tracking-tighter text-sm px-6 py-4 rounded-xl hover:bg-red-700 transition-all disabled:opacity-50">
                             Post to Profile
                           </button>
                         </div>
@@ -606,10 +657,11 @@ export function CareerPage() {
                                height="100%"
                                controls
                                playsinline
+                               light={clip.thumbnailUrl || true}
                              />
-                             <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start opacity-0 group-hover/clip:opacity-100 transition-opacity">
-                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10">{clip.title}</span>
-                                <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10">
+                             <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start opacity-0 group-hover/clip:opacity-100 transition-opacity pointer-events-none">
+                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10 pointer-events-auto">{clip.title}</span>
+                                <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10 pointer-events-auto">
                                    <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                              </div>
