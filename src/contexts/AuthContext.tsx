@@ -22,6 +22,11 @@ interface UserProfile {
   gym: string;
   isPro: boolean;
   createdAt: number;
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+  };
 }
 
 interface AuthContextType {

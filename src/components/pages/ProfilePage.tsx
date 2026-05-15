@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { handleFirestoreError, OperationType } from '../../utils/error';
@@ -352,6 +352,30 @@ export function ProfilePage() {
                   <p className="text-zinc-400 text-sm leading-relaxed">
                      {profileData.bio || 'No bio provided.'}
                   </p>
+                  
+                  {/* Social Links */}
+                  {(profileData.socialLinks?.instagram || profileData.socialLinks?.twitter || profileData.socialLinks?.youtube) && (
+                    <div className="pt-4 mt-6 border-t border-white/5">
+                      <h3 className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] mb-4">Digital Footprint</h3>
+                      <div className="flex flex-wrap gap-4">
+                        {profileData.socialLinks?.instagram && (
+                          <a href={profileData.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white hover:border-[#E31837] hover:text-[#E31837] transition-colors">
+                            <Instagram className="w-4 h-4" /> Instagram
+                          </a>
+                        )}
+                        {profileData.socialLinks?.twitter && (
+                          <a href={profileData.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white hover:border-[#E31837] hover:text-[#E31837] transition-colors">
+                            <Twitter className="w-4 h-4" /> Twitter
+                          </a>
+                        )}
+                        {profileData.socialLinks?.youtube && (
+                          <a href={profileData.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-black border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white hover:border-[#E31837] hover:text-[#E31837] transition-colors">
+                            <Youtube className="w-4 h-4" /> YouTube
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                </div>
             </div>
 

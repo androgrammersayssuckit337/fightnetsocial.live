@@ -27,7 +27,8 @@ service cloud.firestore {
              (data.get('bio', '') is string && data.get('bio', '').size() <= 2000) &&
              (data.get('record', '') is string && data.get('record', '').size() <= 100) &&
              (data.get('gym', '') is string && data.get('gym', '').size() <= 300) &&
-             (data.get('isPro', false) is bool);
+             (data.get('isPro', false) is bool) &&
+             (data.get('socialLinks', {}) is map);
     }
 
     function isValidPost(data) {
@@ -134,7 +135,7 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create: if isSignedIn() && (isOwner(userId) || isBot(userId)) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email']) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email', 'socialLinks']) &&
                     incoming().email == existing().email &&
                     incoming().role == existing().role;
     }

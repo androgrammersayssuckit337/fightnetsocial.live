@@ -48,6 +48,11 @@ export function CareerPage() {
     record: userProfile?.record || '',
     profileImageUrl: userProfile?.profileImageUrl || '',
     role: userProfile?.role || 'fan',
+    socialLinks: {
+      instagram: userProfile?.socialLinks?.instagram || '',
+      twitter: userProfile?.socialLinks?.twitter || '',
+      youtube: userProfile?.socialLinks?.youtube || ''
+    }
   });
 
   useEffect(() => {
@@ -448,6 +453,36 @@ export function CareerPage() {
                               placeholder="Tell promoters and fans who you are, what you fight for, and why you're the next big prospect."
                               className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all resize-none min-h-[150px] leading-relaxed"
                             />
+                         </div>
+
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="space-y-2">
+                               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Instagram URL</label>
+                               <input 
+                                 value={formData.socialLinks.instagram} 
+                                 onChange={e => setFormData({...formData, socialLinks: {...formData.socialLinks, instagram: e.target.value}})}
+                                 placeholder="https://instagram.com/..."
+                                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Twitter Target</label>
+                               <input 
+                                 value={formData.socialLinks.twitter} 
+                                 onChange={e => setFormData({...formData, socialLinks: {...formData.socialLinks, twitter: e.target.value}})}
+                                 placeholder="https://twitter.com/..."
+                                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">YouTube Channel</label>
+                               <input 
+                                 value={formData.socialLinks.youtube} 
+                                 onChange={e => setFormData({...formData, socialLinks: {...formData.socialLinks, youtube: e.target.value}})}
+                                 placeholder="https://youtube.com/@..."
+                                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all"
+                               />
+                            </div>
                          </div>
 
                          <div className="pt-4">
