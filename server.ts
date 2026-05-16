@@ -12,10 +12,19 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  const squareToken = process.env.SQUARE_ACCESS_TOKEN || "";
+  const squareEnvStr = process.env.SQUARE_ENVIRONMENT?.toLowerCase();
+  
+  const environment = squareEnvStr === "sandbox" ? SquareEnvironment.Sandbox :
+                      squareEnvStr === "production" ? SquareEnvironment.Production :
+                      squareToken.startsWith("EAAAE") ? SquareEnvironment.Sandbox :
+                      squareToken.startsWith("sandbox-") ? SquareEnvironment.Sandbox :
+                      process.env.NODE_ENV === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox;
+
   // Initialize Square Client
   const squareClient = new SquareClient({
-    token: process.env.SQUARE_ACCESS_TOKEN || "",
-    environment: process.env.NODE_ENV === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
+    token: squareToken,
+    environment,
   });
 
   // API Route for Square Checkout
@@ -58,6 +67,13 @@ async function startServer() {
       res.json({ url: paymentLink.url });
     } catch (error: any) {
        console.error("Square Checkout Error:", error);
+       if (error.errors && error.errors.length > 0) {
+         console.error("Square Error Details:", JSON.stringify(error.errors, null, 2));
+         const isAuth = error.errors.some((e: any) => e.category === 'AUTHENTICATION_ERROR');
+         if (isAuth) {
+           return res.status(401).json({ error: "Square Authentication Error. Check SQUARE_ACCESS_TOKEN and SQUARE_ENVIRONMENT." });
+         }
+       }
        res.status(500).json({ error: error.message || "An error occurred with Square" });
     }
   });
@@ -69,7 +85,14 @@ async function startServer() {
         return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
       }
       const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ 
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       const { prompt } = req.body;
 
       const operation = await ai.models.generateVideos({
@@ -94,7 +117,14 @@ async function startServer() {
         return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
       }
       const { GoogleGenAI, GenerateVideosOperation } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ 
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       const { operationName } = req.body;
 
       if (!operationName) return res.status(400).json({ error: "Missing operationName" });
@@ -116,7 +146,14 @@ async function startServer() {
         return res.status(403).json({ error: "GEMINI_API_KEY missing in Secrets." });
       }
       const { GoogleGenAI, GenerateVideosOperation } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ 
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
       const { operationName } = req.body;
 
       if (!operationName) return res.status(400).json({ error: "Missing operationName" });
