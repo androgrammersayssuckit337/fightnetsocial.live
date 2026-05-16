@@ -94,7 +94,7 @@ export function SponsorsPage() {
       <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-lg mb-8">
         <h2 className="text-sm font-black uppercase border-b border-zinc-800 pb-4 mb-4 flex items-center justify-between tracking-widest">
           <span>Top Matches</span>
-          <span className="text-[10px] tracking-widest text-[#E31837]">FIGHTNET ALGORITHM</span>
+          <span className="text-sm font-brand tracking-wider text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)]">FightNet Algorithm</span>
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

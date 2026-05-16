@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=UnifrakturMaguntia&family=Pirata+One&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Bebas Neue", "Inter", sans-serif;
+  --font-brand: "UnifrakturMaguntia", "Pirata One", cursive;
   
   --color-brand-red: #E31837;
   --color-brand-dark: #0a0a0a;

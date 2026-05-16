@@ -13,7 +13,7 @@ export function StorePage() {
     <div className="p-4 md:p-8 space-y-8 min-h-full bg-[#0a0a0a]">
       <header className="mb-8 flex justify-between items-end border-b border-[#222] pb-4">
         <div>
-          <h1 className="text-2xl font-black uppercase text-white tracking-tighter italic mb-1">FightNet Gear</h1>
+          <h1 className="text-4xl font-brand tracking-wider text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] mb-1">FightNet Gear</h1>
           <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Wear the movement. Built for the grind.</p>
         </div>
         <button className="flex items-center gap-2 bg-[#E31837] text-white px-4 py-2 text-[10px] rounded font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">

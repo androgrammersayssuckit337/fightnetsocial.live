@@ -34,8 +34,8 @@ export function GymLocatorPage() {
             <MapPin className="w-5 h-5 fill-[#E31837]/50" />
           </div>
           
-          <div className="absolute bottom-4 right-4 bg-black/80 px-4 py-2 border border-zinc-800 rounded font-mono text-[10px] text-[#E31837] backdrop-blur font-bold tracking-widest">
-            FIGHTNET MAPS
+          <div className="absolute bottom-4 right-4 bg-black/80 px-4 py-2 border border-zinc-800 rounded font-brand text-lg text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] backdrop-blur tracking-wider">
+            FightNet Maps
           </div>
         </div>
 

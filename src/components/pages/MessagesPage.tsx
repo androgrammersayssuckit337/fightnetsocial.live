@@ -252,7 +252,7 @@ export function MessagesPage() {
            </>
          ) : (
            <div className="flex-1 flex flex-col items-center justify-center text-zinc-600 select-none">
-             <div className="text-6xl mb-4 font-black italic tracking-tighter opacity-5 text-[#E31837]">FIGHTNET SECURE COMMS</div>
+             <div className="text-7xl mb-4 font-brand tracking-wider opacity-10 text-zinc-400 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)]">FightNet Secure Comms</div>
              <p className="text-xs uppercase tracking-widest font-bold">Select a conversation or search</p>
            </div>
          )}

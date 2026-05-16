@@ -47,8 +47,8 @@ export function AppLayout() {
       {/* Sidebar fixed to the Left on all views */}
       <aside className="w-16 md:w-64 flex flex-col border-r border-[#222] bg-[#0a0a0a] z-40 shrink-0 pb-safe md:pb-0">
         <div className="h-16 flex items-center justify-center md:justify-start md:px-6 border-b border-[#222] shrink-0">
-          <h1 className="text-2xl font-black tracking-tighter text-[#E31837] italic hidden md:block">FIGHTNET</h1>
-          <h1 className="text-lg font-black tracking-tighter text-[#E31837] italic md:hidden">FN</h1>
+          <h1 className="text-3xl font-brand tracking-wider hidden md:inline-block drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] pr-2 bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-300 to-zinc-700">FightNet</h1>
+          <h1 className="text-2xl font-brand tracking-wider md:hidden drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-300 to-zinc-700">FN</h1>
         </div>
         
         <nav className="flex-1 py-4 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -168,9 +168,9 @@ export function AppRoutes() {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="animate-pulse flex flex-col items-center">
-            <span className="text-4xl font-black italic tracking-tighter text-[#E31837] opacity-50">FIGHTNET</span>
+            <span className="text-5xl font-brand tracking-wider drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] opacity-90 bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-300 to-zinc-700">FightNet</span>
             <div className="h-1 w-32 bg-[#E31837] mt-4 rounded overflow-hidden">
-              <div className="h-full bg-white w-1/3 animate-[slide_1.5s_ease-in-out_infinite]" style={{ animationName: 'slide' }}></div>
+              <div className="h-full bg-zinc-300 w-1/3 animate-[slide_1.5s_ease-in-out_infinite]" style={{ animationName: 'slide' }}></div>
             </div>
             <style>{`@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }`}</style>
         </div>

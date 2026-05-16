@@ -774,7 +774,7 @@ export function CareerPage() {
           <div className="bg-[#0c0c0c] border border-[#E31837]/30 p-8 mt-12 rounded-lg">
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="flex-1">
-                <h2 className="text-2xl font-black uppercase text-white mb-2 flex items-center gap-2 italic tracking-tighter"><Zap className="w-6 h-6 text-yellow-500 fill-yellow-500" /> FightNet Pro</h2>
+                <h2 className="text-3xl font-brand tracking-wider text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] mb-2 flex items-center gap-2"><Zap className="w-8 h-8 text-yellow-500 fill-yellow-500" /> FightNet Pro</h2>
                 <p className="text-zinc-400 mb-4 text-sm max-w-lg">Unlimited tape uploads, premium analytics, direct messaging to sponsors, and priority agent review process.</p>
                 <div className="text-[#E31837] font-black text-3xl tracking-tighter mb-4">$9.99<span className="text-[10px] text-zinc-500 font-sans uppercase tracking-widest ml-1">/mo</span></div>
                 <button 

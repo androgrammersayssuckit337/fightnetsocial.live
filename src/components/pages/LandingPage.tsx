@@ -181,9 +181,9 @@ export function LandingPage() {
         <header className="p-6 md:px-12 md:py-8 flex justify-between items-center z-20">
           <div 
             onClick={() => setAuthMode('landing')}
-            className="tracking-tighter text-2xl md:text-3xl text-[#E31837] italic font-black cursor-pointer drop-shadow-[0_4px_10px_rgba(227,24,55,0.3)]"
+            className="text-4xl md:text-5xl font-brand cursor-pointer tracking-wider drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] pr-2 bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-300 to-zinc-700"
           >
-            FIGHTNET
+            FightNet
           </div>
           <button 
             onClick={() => {
