@@ -816,6 +816,7 @@ export function CareerPage() {
             isOpen={showVideoModal} 
             onClose={() => setShowVideoModal(false)} 
             fighterName={userProfile?.displayName || 'The Contender'} 
+            initialPrompt={`A cinematic promotional video of ${userProfile?.displayName || 'The Contender'}, an elite MMA fighter. Show them throwing a dynamic combination in a dimly lit, gritty combat arena with neon red accents, slow motion, dramatic hyper-realistic lighting.`}
           />
         </motion.div>
       )}

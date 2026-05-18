@@ -244,8 +244,8 @@ export function InvestorsPage() {
           <div className="bg-zinc-900 border border-white/10 p-6 rounded-lg">
             <h4 className="font-black uppercase text-xs text-white mb-4 italic tracking-tighter">Investment Contact</h4>
             <div className="space-y-4">
-              <button className="w-full bg-[#E31837] text-white py-3 text-[10px] font-black uppercase tracking-widest rounded hover:bg-red-700 transition">Request Prospectus</button>
-              <button className="w-full border border-zinc-700 text-zinc-400 py-3 text-[10px] font-black uppercase tracking-widest rounded hover:border-white hover:text-white transition">Schedule Meeting</button>
+              <a href="mailto:dfbreauxjr@gmail.com?subject=FightNet%20Prospectus%20Request" className="block text-center w-full bg-[#E31837] text-white py-3 text-[10px] font-black uppercase tracking-widest rounded hover:bg-red-700 transition">Request Prospectus</a>
+              <a href="mailto:dfbreauxjr@gmail.com?subject=FightNet%20Investment%20Meeting" className="block text-center w-full border border-zinc-700 text-zinc-400 py-3 text-[10px] font-black uppercase tracking-widest rounded hover:border-white hover:text-white transition">Schedule Meeting</a>
             </div>
           </div>
 

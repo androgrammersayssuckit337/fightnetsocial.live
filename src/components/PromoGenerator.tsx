@@ -8,15 +8,27 @@ interface PromoGeneratorProps {
   isOpen: boolean;
   onClose: () => void;
   fighterName: string;
+  initialPrompt?: string;
 }
 
-export function PromoGenerator({ isOpen, onClose, fighterName }: PromoGeneratorProps) {
-  const [prompt, setPrompt] = useState(`A cinematic promotional video of an MMA fighter named ${fighterName || 'The Contender'} training intensely in a dark, gritty gym. Neon lights.`);
+export function PromoGenerator({ isOpen, onClose, fighterName, initialPrompt }: PromoGeneratorProps) {
+  const defaultPrompt = initialPrompt || `A cinematic promotional video of an MMA fighter named ${fighterName || 'The Contender'} training intensely in a dark, gritty gym. Neon lights.`;
+  const [prompt, setPrompt] = useState(defaultPrompt);
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [videoBlobUrl, setVideoBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progressStatus, setProgressStatus] = useState<string>('');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setPrompt(defaultPrompt);
+      setVideoUri(null);
+      setVideoBlobUrl(null);
+      setError(null);
+      setProgressStatus('');
+    }
+  }, [isOpen, defaultPrompt]);
 
   const generateVideo = async () => {
     try {

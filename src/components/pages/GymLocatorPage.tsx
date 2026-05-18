@@ -1,5 +1,7 @@
-import React from 'react';
-import { MapPin, Navigation } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Navigation } from 'lucide-react';
+import { APIProvider, Map, AdvancedMarker, Pin, useMap, InfoWindow, useAdvancedMarkerRef } from '@vis.gl/react-google-maps';
+import '@googlemaps/extended-component-library/place_picker.js';
 
 const MOCK_GYMS = [
   { id: 1, name: 'P.E. Training Center', distance: '1.2 mi', type: 'MMA, BJJ, Muay Thai', location: 'Lake Charles, LA' },
@@ -8,6 +10,83 @@ const MOCK_GYMS = [
   { id: 4, name: 'Headkicks Martial Arts', distance: '35.4 mi', type: 'Muay Thai, Kickboxing', location: 'Abbeville, LA' },
   { id: 5, name: 'Ignite Fitness & MMA', distance: '31.8 mi', type: 'Fitness, BJJ', location: 'Lafayette, LA' },
 ];
+
+const API_KEY =
+  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
+  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
+  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
+  '';
+const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
+
+function MapInner() {
+  const map = useMap();
+  const placePickerRef = useRef<any>(null);
+  const [markerRef, marker] = useAdvancedMarkerRef();
+  
+  const [placeName, setPlaceName] = useState<string>('');
+  const [placeAddress, setPlaceAddress] = useState<string>('');
+  const [markerPosition, setMarkerPosition] = useState<google.maps.LatLngLiteral | null>(null);
+  const [infoWindowOpen, setInfoWindowOpen] = useState(false);
+
+  useEffect(() => {
+    if (!map) return;
+    map.setOptions({ mapTypeControl: false });
+  }, [map]);
+
+  useEffect(() => {
+    const picker = placePickerRef.current;
+    if (!picker || !map) return;
+
+    const handlePlaceChange = () => {
+      const place = picker.value;
+      if (!place || !place.location) {
+        window.alert("No details available for input: '" + (place?.name || '') + "'");
+        setInfoWindowOpen(false);
+        setMarkerPosition(null);
+        return;
+      }
+
+      if (place.viewport) {
+        map.fitBounds(place.viewport);
+      } else {
+        map.setCenter(place.location);
+        map.setZoom(17);
+      }
+
+      setMarkerPosition({ lat: place.location.lat(), lng: place.location.lng() });
+      setPlaceName(place.displayName);
+      setPlaceAddress(place.formattedAddress);
+      setInfoWindowOpen(true);
+    };
+
+    picker.addEventListener('gmpx-placechange', handlePlaceChange);
+    return () => picker.removeEventListener('gmpx-placechange', handlePlaceChange);
+  }, [map]);
+
+  return (
+    <>
+      <div className="absolute top-4 left-4 z-10 w-72">
+        {/* @ts-ignore */}
+        <gmpx-place-picker ref={placePickerRef} placeholder="Search for a gym..."></gmpx-place-picker>
+      </div>
+      
+      {markerPosition && (
+        <AdvancedMarker ref={markerRef} position={markerPosition} onClick={() => setInfoWindowOpen(true)}>
+          <Pin background="#E31837" glyphColor="#fff" borderColor="#E31837" />
+        </AdvancedMarker>
+      )}
+
+      {infoWindowOpen && markerPosition && (
+        <InfoWindow anchor={marker} onCloseClick={() => setInfoWindowOpen(false)}>
+          <div className="text-zinc-900 font-sans p-1">
+            <strong className="block mb-1">{placeName}</strong>
+            <span className="text-xs">{placeAddress}</span>
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
+}
 
 export function GymLocatorPage() {
   return (
@@ -18,23 +97,28 @@ export function GymLocatorPage() {
       </header>
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-        {/* Mock Map */}
+        {/* Real Map */}
         <div className="flex-1 bg-black border border-zinc-800 rounded-lg relative min-h-[300px] overflow-hidden group">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80')] bg-cover bg-center opacity-30 grayscale group-hover:grayscale-0 group-hover:opacity-50 transition-all duration-700 mix-blend-luminosity"></div>
-          <div className="absolute inset-0 bg-[#E31837]/5 mix-blend-multiply"></div>
+          {!hasValidKey ? (
+            <div className="flex items-center justify-center h-full flex-col text-center p-6 text-zinc-400">
+              <p className="mb-2 uppercase tracking-widest font-bold text-[#E31837]">API Key Required</p>
+              <p className="text-sm">Please set GOOGLE_MAPS_PLATFORM_KEY in your AI Studio Secrets to enable the map.</p>
+            </div>
+          ) : (
+            <APIProvider apiKey={API_KEY} version="weekly">
+              <Map
+                defaultCenter={{lat: 30.2266, lng: -92.0198}} // Lafayette, LA center
+                defaultZoom={10}
+                mapId="DEMO_MAP_ID"
+                internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
+                style={{width: '100%', height: '100%'}}
+              >
+                <MapInner />
+              </Map>
+            </APIProvider>
+          )}
           
-          {/* Map markers mock */}
-          <div className="absolute top-1/4 left-1/3 text-[#E31837] animate-bounce">
-            <MapPin className="w-8 h-8 drop-shadow-[0_0_10px_rgba(227,24,55,0.8)] fill-[#E31837]" />
-          </div>
-          <div className="absolute top-1/2 left-2/3 text-red-900/80">
-            <MapPin className="w-6 h-6 fill-[#E31837]/50" />
-          </div>
-          <div className="absolute bottom-1/3 left-1/4 text-red-900/80">
-            <MapPin className="w-5 h-5 fill-[#E31837]/50" />
-          </div>
-          
-          <div className="absolute bottom-4 right-4 bg-black/80 px-4 py-2 border border-zinc-800 rounded font-brand text-lg text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] backdrop-blur tracking-wider">
+          <div className="absolute bottom-4 right-4 bg-black/80 px-4 py-2 border border-zinc-800 rounded font-brand text-lg text-zinc-200 drop-shadow-[0_2px_2px_rgba(227,24,55,0.8)] backdrop-blur tracking-wider pointer-events-none">
             FightNet Maps
           </div>
         </div>
