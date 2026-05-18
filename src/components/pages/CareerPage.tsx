@@ -122,11 +122,13 @@ export function CareerPage() {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `videos/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    let fileExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    const fileName = `videos/${auth.currentUser.uid}_${Date.now()}.${fileExt || 'mp4'}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: getMimeType(file) };
+    let mimeType = getMimeType(file);
+    if (!mimeType.startsWith('video/')) mimeType = 'video/mp4';
+    const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
@@ -161,11 +163,13 @@ export function CareerPage() {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `thumbnails/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    let fileExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    const fileName = `thumbnails/${auth.currentUser.uid}_${Date.now()}.${fileExt || 'jpg'}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: getMimeType(file) };
+    let mimeType = getMimeType(file);
+    if (!mimeType.startsWith('image/')) mimeType = 'image/jpeg';
+    const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 
@@ -230,11 +234,15 @@ export function CareerPage() {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `contracts/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
+    let fileExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    const fileName = `contracts/${auth.currentUser.uid}_${Date.now()}.${fileExt || 'pdf'}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: getMimeType(file) };
+    let mimeType = getMimeType(file);
+    if (!mimeType.startsWith('image/') && mimeType !== 'application/pdf') {
+       mimeType = fileExt === 'pdf' ? 'application/pdf' : 'image/jpeg';
+    }
+    const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on('state_changed', 

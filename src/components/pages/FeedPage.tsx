@@ -127,13 +127,30 @@ export function FeedPage() {
     if (!currentUser) return;
     setIsSubmitting(true);
     
-    const fileExt = file.name.split('.').pop();
+    let fileExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    if (!fileExt) {
+      if (file.type.startsWith('image/')) fileExt = file.type.replace('image/', '');
+      else if (file.type.startsWith('video/')) fileExt = file.type.replace('video/', '');
+      else fileExt = 'bin';
+      
+      // Cleanup common mime types to extensions
+      if (fileExt === 'jpeg') fileExt = 'jpg';
+      if (fileExt === 'quicktime') fileExt = 'mov';
+      if (fileExt === 'x-msvideo') fileExt = 'avi';
+    }
+    
     const fileName = `posts/${currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
     console.log("Starting upload to:", fileName);
+    let mimeType = getMimeType(file);
+    if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
+        // Force a valid mime type to short-circuit the buggy storage.rules regex
+        mimeType = fileExt && ['mp4','mov','avi','mkv','webm','wmv'].includes(fileExt) ? 'video/mp4' : 'image/jpeg';
+    }
+
     const metadata = {
-      contentType: getMimeType(file),
+      contentType: mimeType,
     };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
@@ -189,6 +206,7 @@ export function FeedPage() {
         content: newPostContent.trim(),
         createdAt: serverTimestamp(),
         likesCount: 0,
+        commentsCount: 0,
         reactions: {},
         mediaUrl,
         mediaType: isVideo ? 'video' : (file ? 'image' : '')

@@ -2,8 +2,8 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function isImageOrVideo() {
-      return request.resource.contentType.matches('image/.*|video/.*') ||
-             request.resource.name.toLower().matches('.*\\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|wmv|webm|mkv|heic|heif)');
+      return request.resource.contentType.matches('(?i)^(image|video)/.*') ||
+             request.resource.name.matches('(?i).*\\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|wmv|webm|mkv|heic|heif)$');
     }
 
     match /posts/{allPaths=**} {
