@@ -69,9 +69,25 @@
         "createdAt": { "type": "number", "description": "Timestamp" }
       },
       "required": ["fighterId", "videoUrl", "createdAt"]
+    },
+    "TrainingTask": {
+      "title": "Training Task",
+      "description": "A scheduled or self-assigned training task for a fighter.",
+      "type": "object",
+      "properties": {
+        "fighterId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["fighterId", "title", "completed", "createdAt"]
     }
   },
   "firestore": {
+    "/trainingTasks/{taskId}": {
+      "schema": { "$ref": "#/entities/TrainingTask" },
+      "description": "Training tasks tracker"
+    },
     "/videoClips/{clipId}": {
       "schema": { "$ref": "#/entities/VideoClip" },
       "description": "Training video clips"

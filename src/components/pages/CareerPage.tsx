@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, Calendar, Link as LinkIcon, Download } from 'lucide-react';
+import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, CheckCircle2, Circle, Calendar, Link as LinkIcon, Download, ListTodo } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
 import { doc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -43,6 +43,10 @@ export function CareerPage() {
     videoUrl: '',
     thumbnailUrl: ''
   });
+
+  const [trainingTasks, setTrainingTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
 
   const [formData, setFormData] = useState({
     displayName: userProfile?.displayName || '',
@@ -89,8 +93,30 @@ export function CareerPage() {
       }
     };
 
+    const fetchTasks = async () => {
+      setLoadingTasks(true);
+      try {
+        const q = query(collection(db, 'trainingTasks'), where('fighterId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const fetchedTasks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // sort tasks, unfinished first, then chronological
+        fetchedTasks.sort((a: any, b: any) => {
+          if (a.completed === b.completed) {
+            return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+          }
+          return a.completed ? 1 : -1;
+        });
+        setTrainingTasks(fetchedTasks);
+      } catch (err) {
+        console.error("Failed to fetch tasks", err);
+      } finally {
+        setLoadingTasks(false);
+      }
+    };
+
     fetchContracts();
     fetchVideos();
+    fetchTasks();
   }, [currentUser, userProfile?.role]);
 
   const getMimeType = (file: File) => {
@@ -212,6 +238,53 @@ export function CareerPage() {
       setVideoClips(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'videoClips', auth);
+    }
+  };
+
+  const handleAddTrainingTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser || !newTaskTitle.trim()) return;
+    try {
+      const docRef = await addDoc(collection(db, 'trainingTasks'), {
+        fighterId: auth.currentUser.uid,
+        title: newTaskTitle.trim(),
+        completed: false,
+        createdAt: serverTimestamp()
+      });
+      setNewTaskTitle('');
+      setTrainingTasks(prev => [{ id: docRef.id, fighterId: auth.currentUser?.uid, title: newTaskTitle.trim(), completed: false, createdAt: { toMillis: () => Date.now() } }, ...prev]);
+    } catch (error) {
+       handleFirestoreError(error, OperationType.CREATE, 'trainingTasks', auth);
+    }
+  };
+
+  const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
+    if (!auth.currentUser) return;
+    try {
+      const taskRef = doc(db, 'trainingTasks', taskId);
+      await updateDoc(taskRef, { completed: !currentStatus });
+      
+      setTrainingTasks(prev => {
+        const updated = prev.map(t => t.id === taskId ? { ...t, completed: !currentStatus } : t);
+        return updated.sort((a, b) => {
+          if (a.completed === b.completed) {
+            return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+          }
+          return a.completed ? 1 : -1;
+        });
+      });
+    } catch (error) {
+       handleFirestoreError(error, OperationType.UPDATE, `trainingTasks/${taskId}`, auth);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!auth.currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'trainingTasks', taskId));
+      setTrainingTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (error) {
+       handleFirestoreError(error, OperationType.DELETE, `trainingTasks/${taskId}`, auth);
     }
   };
 
@@ -598,6 +671,64 @@ export function CareerPage() {
               <button onClick={() => setShowVideoModal(true)} className="bg-white px-6 py-2 uppercase text-[10px] text-black font-bold mt-4 hover:bg-zinc-200 w-full rounded relative z-10 border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.2)]">Create Promo</button>
             </div>
           </div>
+
+          {userProfile?.role === 'fighter' && (
+             <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10 space-y-8">
+                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                     <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3">
+                       <ListTodo className="w-5 h-5 text-[#E31837]" />
+                       Training Tasks
+                     </h2>
+                   </div>
+
+                   <form onSubmit={handleAddTrainingTask} className="flex gap-4">
+                     <input 
+                       value={newTaskTitle} 
+                       onChange={e => setNewTaskTitle(e.target.value)} 
+                       placeholder="Add a new training task (e.g., 5 miles run, Sparring 6 rounds)..." 
+                       className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none" 
+                     />
+                     <button type="submit" disabled={!newTaskTitle.trim()} className="bg-[#E31837] text-white px-6 py-3 rounded-xl font-black uppercase text-xs hover:bg-red-700 transition disabled:opacity-50">
+                       Add Task
+                     </button>
+                   </form>
+
+                   {loadingTasks ? (
+                     <div className="flex justify-center p-8">
+                       <Loader2 className="w-6 h-6 text-[#E31837] animate-spin" />
+                     </div>
+                   ) : trainingTasks.length > 0 ? (
+                     <div className="space-y-3">
+                       {trainingTasks.map(task => (
+                         <div key={task.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${task.completed ? 'bg-zinc-900 border-white/5 opacity-60' : 'bg-black border-white/10 hover:border-white/20'}`}>
+                           <div className="flex items-center gap-4">
+                             <button onClick={() => handleToggleTask(task.id, task.completed)} className="focus:outline-none transition-transform hover:scale-110">
+                               {task.completed ? (
+                                 <CheckCircle2 className="w-6 h-6 text-[#E31837]" />
+                               ) : (
+                                 <Circle className="w-6 h-6 text-zinc-600 hover:text-zinc-400" />
+                               )}
+                             </button>
+                             <span className={`text-sm font-semibold uppercase tracking-tight ${task.completed ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                               {task.title}
+                             </span>
+                           </div>
+                           <button onClick={() => handleDeleteTask(task.id)} className="text-zinc-600 hover:text-red-500 transition-colors p-2 rounded">
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                         </div>
+                       ))}
+                     </div>
+                   ) : (
+                     <div className="bg-black/30 border border-white/5 rounded-2xl p-10 text-center">
+                       <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">No tasks active. Time to put in the work.</p>
+                     </div>
+                   )}
+                </div>
+             </div>
+          )}
 
           {userProfile?.role === 'fighter' && (
              <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">

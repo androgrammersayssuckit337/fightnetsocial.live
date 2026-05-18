@@ -101,6 +101,14 @@ service cloud.firestore {
              (data.get('thumbnailUrl', '') is string && data.get('thumbnailUrl', '').size() <= 2500);
     }
 
+    function isValidTrainingTask(data) {
+      return data.keys().hasAll(['fighterId', 'title', 'completed', 'createdAt']) &&
+             data.fighterId is string && data.fighterId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.completed is bool &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
     // Collections
     match /contracts/{contractId} {
       allow get: if isSignedIn() && isValidId(contractId) && (
@@ -127,6 +135,18 @@ service cloud.firestore {
                     incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'thumbnailUrl']) &&
                     incoming().fighterId == existing().fighterId &&
                     incoming().videoUrl == existing().videoUrl &&
+                    incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
+    }
+
+    match /trainingTasks/{taskId} {
+      allow get: if isSignedIn() && isValidId(taskId) && existing().fighterId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.fighterId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTrainingTask(incoming());
+      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidTrainingTask(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['completed']) &&
+                    incoming().fighterId == existing().fighterId &&
+                    incoming().title == existing().title &&
                     incoming().createdAt == existing().createdAt;
       allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
     }
