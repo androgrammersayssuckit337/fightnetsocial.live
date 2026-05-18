@@ -23,7 +23,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export function AppLayout() {
-  const { logout, userProfile } = useAuth();
+  const { logout, userProfile, upgradeToPro } = useAuth();
   const location = useLocation();
 
   const navItems = [
@@ -98,12 +98,12 @@ export function AppLayout() {
         </nav>
 
         <div className="shrink-0 flex flex-col">
-          {userProfile?.role === 'fighter' && (
+          {userProfile?.role === 'fighter' && !userProfile.isPro && (
             <div className="hidden md:block p-4 bg-zinc-900 m-4 rounded border border-zinc-800">
               <p className="text-[11px] text-zinc-400 mb-2 uppercase tracking-wide">Pro Access</p>
               <p className="text-lg font-bold leading-none mb-1">$9.99/mo</p>
               <p className="text-[10px] text-zinc-500 mb-3">Unlock Agents & Scouting</p>
-              <button className="w-full py-2 bg-[#E31837] text-white text-[11px] font-black uppercase tracking-tighter rounded hover:bg-red-700 transition">Go Pro Now</button>
+              <button onClick={() => { upgradeToPro(); alert("Pro features unlocked for testing!"); }} className="w-full py-2 bg-[#E31837] text-white text-[11px] font-black uppercase tracking-tighter rounded hover:bg-red-700 transition">Go Pro Now</button>
             </div>
           )}
           

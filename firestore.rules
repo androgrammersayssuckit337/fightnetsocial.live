@@ -97,6 +97,7 @@ service cloud.firestore {
              data.videoUrl is string && data.videoUrl.size() <= 2500 &&
              (data.createdAt is timestamp || data.createdAt is number) &&
              (data.get('title', '') is string && data.get('title', '').size() <= 200) &&
+             (data.get('description', '') is string && data.get('description', '').size() <= 2000) &&
              (data.get('thumbnailUrl', '') is string && data.get('thumbnailUrl', '').size() <= 2500);
     }
 
@@ -123,7 +124,7 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create: if isSignedIn() && isValidId(clipId) && isValidVideoClip(incoming());
       allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidVideoClip(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['title', 'thumbnailUrl']) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'thumbnailUrl']) &&
                     incoming().fighterId == existing().fighterId &&
                     incoming().videoUrl == existing().videoUrl &&
                     incoming().createdAt == existing().createdAt;

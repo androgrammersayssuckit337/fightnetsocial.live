@@ -39,6 +39,7 @@ export function CareerPage() {
   const [thumbnailUploadProgress, setThumbnailUploadProgress] = useState(0);
   const [videoData, setVideoData] = useState({
     title: '',
+    description: '',
     videoUrl: '',
     thumbnailUrl: ''
   });
@@ -200,7 +201,7 @@ export function CareerPage() {
         createdAt: serverTimestamp()
       });
       setShowAddVideo(false);
-      setVideoData({ title: '', videoUrl: '', thumbnailUrl: '' });
+      setVideoData({ title: '', description: '', videoUrl: '', thumbnailUrl: '' });
       // Refresh videos
       const q = query(collection(db, 'videoClips'), where('fighterId', '==', auth.currentUser.uid));
       const querySnapshot = await getDocs(q);
@@ -616,6 +617,11 @@ export function CareerPage() {
                            </div>
                            
                            <div className="space-y-2">
+                             <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Description</label>
+                             <textarea value={videoData.description} onChange={e => setVideoData({...videoData, description: e.target.value})} placeholder="Tell viewers about this training session..." className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#E31837] outline-none resize-none min-h-[100px]" />
+                           </div>
+                           
+                           <div className="space-y-2">
                              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Video (Max 200MB)</label>
                              <div className="flex items-center gap-4">
                                <input type="file" ref={videoFileRef} onChange={handleVideoUpload} className="hidden" accept="video/*" />
@@ -650,20 +656,27 @@ export function CareerPage() {
                    ) : videoClips.length > 0 ? (
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                        {videoClips.map(clip => (
-                          <div key={clip.id} className="group/clip relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5">
-                             <ReactPlayer 
-                               url={clip.videoUrl} 
-                               width="100%"
-                               height="100%"
-                               controls
-                               playsinline
-                               light={clip.thumbnailUrl || true}
-                             />
-                             <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start opacity-0 group-hover/clip:opacity-100 transition-opacity pointer-events-none">
-                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/10 pointer-events-auto">{clip.title}</span>
-                                <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10 pointer-events-auto">
-                                   <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                          <div key={clip.id} className="group/clip bg-zinc-950 rounded-2xl overflow-hidden border border-white/5 flex flex-col">
+                             <div className="relative aspect-video bg-black">
+                               <ReactPlayer 
+                                 url={clip.videoUrl} 
+                                 width="100%"
+                                 height="100%"
+                                 controls
+                                 playsinline
+                                 light={clip.thumbnailUrl || true}
+                               />
+                               <div className="absolute top-4 right-4 z-10 flex opacity-0 group-hover/clip:opacity-100 transition-opacity">
+                                  <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10 pointer-events-auto">
+                                     <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                               </div>
+                             </div>
+                             <div className="p-4 flex flex-col gap-1 flex-1">
+                                <h3 className="font-bold text-white text-sm uppercase tracking-tight line-clamp-1">{clip.title}</h3>
+                                {clip.description && (
+                                  <p className="text-zinc-400 text-xs line-clamp-2">{clip.description}</p>
+                                )}
                              </div>
                           </div>
                        ))}

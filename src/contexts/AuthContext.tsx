@@ -37,6 +37,7 @@ interface AuthContextType {
   registerWithEmail: (email: string, password: string, displayName: string, role: 'fighter' | 'fan' | 'sponsor') => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  upgradeToPro: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -163,6 +164,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return signOut(auth);
   };
 
+  const upgradeToPro = async () => {
+    if (!currentUser || !userProfile) return;
+    try {
+      const { updateDoc } = await import('firebase/firestore');
+      const docRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(docRef, { isPro: true });
+      setUserProfile({ ...userProfile, isPro: true });
+    } catch (error) {
+      console.error("Failed to upgrade to pro:", error);
+    }
+  };
+
   const value = {
     currentUser,
     userProfile,
@@ -170,7 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loginWithGoogle,
     registerWithEmail,
     loginWithEmail,
-    logout
+    logout,
+    upgradeToPro
   };
 
   return (

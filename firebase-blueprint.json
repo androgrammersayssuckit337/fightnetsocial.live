@@ -63,6 +63,7 @@
       "properties": {
         "fighterId": { "type": "string" },
         "title": { "type": "string" },
+        "description": { "type": "string" },
         "videoUrl": { "type": "string" },
         "thumbnailUrl": { "type": "string" },
         "createdAt": { "type": "number", "description": "Timestamp" }
