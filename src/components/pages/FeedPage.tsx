@@ -480,6 +480,7 @@ export function FeedPage() {
                   <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-zinc-950 group-hover:border-[#E31837]/30 transition-colors shadow-2xl">
                     {post.mediaType === 'video' ? (
                       <div className="relative aspect-video flex items-center justify-center bg-black overflow-hidden rounded-xl">
+                        {/* @ts-ignore */}
                         <ReactPlayer
                           url={post.mediaUrl}
                           width="100%"

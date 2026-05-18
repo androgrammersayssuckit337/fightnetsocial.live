@@ -81,9 +81,29 @@
         "createdAt": { "type": "number", "description": "Timestamp" }
       },
       "required": ["fighterId", "title", "completed", "createdAt"]
+    },
+    "Event": {
+      "title": "Local Event",
+      "description": "A local or regional fight event submitted by a promoter or user.",
+      "type": "object",
+      "properties": {
+        "submitterId": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "discipline": { "type": "string" },
+        "mainBouts": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["submitterId", "name", "date", "time", "location", "discipline", "mainBouts", "createdAt"]
     }
   },
   "firestore": {
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/Event" },
+      "description": "User-submitted local events"
+    },
     "/trainingTasks/{taskId}": {
       "schema": { "$ref": "#/entities/TrainingTask" },
       "description": "Training tasks tracker"

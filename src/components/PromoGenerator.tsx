@@ -179,6 +179,7 @@ export function PromoGenerator({ isOpen, onClose, fighterName, initialPrompt }: 
                {videoBlobUrl && (
                  <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="aspect-video w-full bg-black rounded-xl overflow-hidden border border-white/10 relative shadow-2xl">
+                       {/* @ts-ignore */}
                        <ReactPlayer 
                          url={videoBlobUrl} 
                          width="100%"

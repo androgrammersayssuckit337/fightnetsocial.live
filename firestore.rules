@@ -109,6 +109,19 @@ service cloud.firestore {
              (data.createdAt is timestamp || data.createdAt is number);
     }
 
+    function isValidEvent(data) {
+      return data.keys().hasAll(['submitterId', 'name', 'date', 'time', 'location', 'discipline', 'mainBouts', 'createdAt']) &&
+             data.submitterId is string && data.submitterId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 100 &&
+             data.time is string && data.time.size() > 0 && data.time.size() <= 100 &&
+             data.location is string && data.location.size() > 0 && data.location.size() <= 300 &&
+             data.discipline is string && data.discipline.size() > 0 && data.discipline.size() <= 100 &&
+             data.mainBouts is list && data.mainBouts.size() >= 0 && data.mainBouts.size() <= 20 &&
+             (data.mainBouts.size() == 0 || (data.mainBouts[0] is string && data.mainBouts[0].size() <= 200)) &&
+             (data.createdAt is timestamp || data.createdAt is number);
+    }
+
     // Collections
     match /contracts/{contractId} {
       allow get: if isSignedIn() && isValidId(contractId) && (
@@ -149,6 +162,17 @@ service cloud.firestore {
                     incoming().title == existing().title &&
                     incoming().createdAt == existing().createdAt;
       allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
+    }
+
+    match /events/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming());
+      allow update: if isSignedIn() && existing().submitterId == request.auth.uid && isValidEvent(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'date', 'time', 'location', 'discipline', 'mainBouts']) &&
+                    incoming().submitterId == existing().submitterId &&
+                    incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && existing().submitterId == request.auth.uid;
     }
 
     match /users/{userId} {

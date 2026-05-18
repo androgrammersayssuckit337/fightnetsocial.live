@@ -53,6 +53,7 @@ export function CareerPage() {
     bio: userProfile?.bio || '',
     gym: userProfile?.gym || '',
     record: userProfile?.record || '',
+    isPro: userProfile?.isPro || false,
     profileImageUrl: userProfile?.profileImageUrl || '',
     role: userProfile?.role || 'fan',
     socialLinks: {
@@ -548,15 +549,33 @@ export function CareerPage() {
                                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all"
                                />
                             </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Current Record (W-L-D)</label>
-                               <input 
-                                 value={formData.record} 
-                                 onChange={e => setFormData({...formData, record: e.target.value})}
-                                 placeholder="12-0-3"
-                                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all font-mono"
-                               />
-                            </div>
+                            
+                            {formData.role === 'fighter' && (
+                              <>
+                                <div className="space-y-2">
+                                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Current Record (W-L-D)</label>
+                                   <input 
+                                     value={formData.record} 
+                                     onChange={e => setFormData({...formData, record: e.target.value})}
+                                     placeholder="12-0-3"
+                                     className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-[#E31837] focus:ring-1 focus:ring-[#E31837] outline-none transition-all font-mono"
+                                   />
+                                </div>
+                                <div className="space-y-2 flex flex-col justify-end">
+                                   <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1 mb-2">Pro Status</label>
+                                   <label className="flex items-center gap-3 cursor-pointer group">
+                                     <div className={`w-12 h-6 rounded-full transition-colors relative ${formData.isPro ? 'bg-[#E31837]' : 'bg-white/10'}`}>
+                                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${formData.isPro ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                     </div>
+                                     <span className="text-sm font-bold uppercase tracking-tight text-white group-hover:text-[#E31837] transition-colors">
+                                       {formData.isPro ? 'Professional Fighter' : 'Amateur Fighter'}
+                                     </span>
+                                     <input type="checkbox" className="hidden" checked={formData.isPro} onChange={(e) => setFormData({...formData, isPro: e.target.checked})} />
+                                   </label>
+                                </div>
+                              </>
+                            )}
+
                             <div className="space-y-2">
                                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Primary Training Facility</label>
                                <input 
@@ -797,6 +816,7 @@ export function CareerPage() {
                        {videoClips.map(clip => (
                           <div key={clip.id} className="group/clip bg-zinc-950 rounded-2xl overflow-hidden border border-white/5 flex flex-col">
                              <div className="relative aspect-video bg-black">
+                               {/* @ts-ignore */}
                                <ReactPlayer 
                                  url={clip.videoUrl} 
                                  width="100%"

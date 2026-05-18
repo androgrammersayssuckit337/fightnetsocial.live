@@ -392,6 +392,7 @@ export function ProfilePage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                    {videoClips.map(clip => (
                       <div key={clip.id} className="relative aspect-video bg-black rounded-2xl overflow-hidden border border-white/5 group/clip">
+                         {/* @ts-ignore */}
                          <ReactPlayer 
                            url={clip.videoUrl} 
                            width="100%"

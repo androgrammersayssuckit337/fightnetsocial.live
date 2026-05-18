@@ -2,10 +2,11 @@ import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 
 const MOCK_PRODUCTS = [
-  { id: 1, name: 'Pro Fighter Rashguard', price: '$45.00', img: 'https://images.unsplash.com/photo-1599839619722-39751411ea63?w=400&q=80', tag: 'BEST SELLER' },
-  { id: 2, name: 'FightNet Official Gloves', price: '$85.00', img: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400&q=80' },
-  { id: 3, name: 'Training Shorts - Black', price: '$35.00', img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=400&q=80' },
-  { id: 4, name: 'Corner Man Tee', price: '$25.00', img: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=400&q=80', tag: 'NEW' },
+  { id: 1, name: 'Iron Skull Two-Piece Training Set', price: '$55.00', img: 'https://images.unsplash.com/photo-1599839619722-39751411ea63?w=400&q=80', tag: 'BEST SELLER' },
+  { id: 2, name: 'Berserk Anime Training Shorts', price: '$35.00', img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=400&q=80', tag: 'NEW' },
+  { id: 3, name: 'Gingpai Boxing Gloves', price: '$49.99', img: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400&q=80' },
+  { id: 4, name: 'MMA Grappling Gloves', price: '$39.99', img: 'https://images.unsplash.com/photo-1583468982228-19f19164aee2?w=400&q=80' },
+  { id: 5, name: '4-Piece MMA Mouth Guard Set', price: '$15.99', img: 'https://images.unsplash.com/photo-1628178864703-4f9640f7b0e1?w=400&q=80' }
 ];
 
 export function StorePage() {
