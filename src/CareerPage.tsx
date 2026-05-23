@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
 import { doc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { motion, AnimatePresence } from 'motion/react';
 import { PromoGenerator } from '../PromoGenerator';
@@ -386,7 +387,6 @@ export function CareerPage() {
     const fileName = `profiles/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    console.log("uploading to:", fileName);
     const metadata = { contentType: getMimeType(file) };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
@@ -394,7 +394,6 @@ export function CareerPage() {
       (snapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setUploadProgress(progress);
-        console.log(`Upload progress: ${progress}%`);
       }, 
       (error) => {
         console.error("Firebase Storage Upload Error:", error);
@@ -404,7 +403,6 @@ export function CareerPage() {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          console.log("File available at:", downloadURL);
           setFormData(prev => ({ ...prev, profileImageUrl: downloadURL }));
           setIsUploading(false);
           setUploadProgress(0);

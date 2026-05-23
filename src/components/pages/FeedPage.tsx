@@ -17,6 +17,7 @@ import {
   deleteField
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
@@ -133,25 +134,19 @@ export function FeedPage() {
       else if (file.type.startsWith('video/')) fileExt = file.type.replace('video/', '');
       else fileExt = 'bin';
       
-      // Cleanup common mime types to extensions
       if (fileExt === 'jpeg') fileExt = 'jpg';
       if (fileExt === 'quicktime') fileExt = 'mov';
       if (fileExt === 'x-msvideo') fileExt = 'avi';
     }
     
-    const fileName = `posts/${currentUser.uid}_${Date.now()}.${fileExt}`;
-    const storageRef = ref(storage, fileName);
-    
-    console.log("Starting upload to:", fileName);
     let mimeType = getMimeType(file);
     if (!mimeType.startsWith('image/') && !mimeType.startsWith('video/')) {
-        // Force a valid mime type to short-circuit the buggy storage.rules regex
         mimeType = fileExt && ['mp4','mov','avi','mkv','webm','wmv'].includes(fileExt) ? 'video/mp4' : 'image/jpeg';
     }
-
-    const metadata = {
-      contentType: mimeType,
-    };
+    
+    const fileName = `posts/${currentUser.uid}_${Date.now()}.${fileExt}`;
+    const storageRef = ref(storage, fileName);
+    const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     return new Promise<string>((resolve, reject) => {
@@ -159,20 +154,17 @@ export function FeedPage() {
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           setUploadProgress(progress);
-          console.log(`Upload progress: ${progress}%`);
         }, 
         (error) => {
           console.error("Firebase Storage Upload Error:", error);
-          alert(`Upload failed: ${error.message}. Large files (>200MB) are blocked.`);
+          alert(`Upload failed: ${error.message}.`);
           reject(error);
         }, 
         async () => {
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            console.log("File available at:", downloadURL);
             resolve(downloadURL);
           } catch (err) {
-            console.error("Error getting download URL:", err);
             reject(err);
           }
         }
