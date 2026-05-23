@@ -30,8 +30,12 @@ app.post("/api/subscribe", async (req, res) => {
     const { successUrl, customerEmail } = req.body;
     const locationId = process.env.SQUARE_LOCATION_ID;
 
+    if (!process.env.SQUARE_ACCESS_TOKEN) {
+      return res.status(401).json({ error: "SQUARE_ACCESS_TOKEN is missing in the server environment. Please configure it." });
+    }
+
     if (!locationId) {
-      throw new Error("SQUARE_LOCATION_ID is missing.");
+      return res.status(400).json({ error: "SQUARE_LOCATION_ID is missing in the server environment. Please configure it." });
     }
 
     // Create a Square Checkout link
