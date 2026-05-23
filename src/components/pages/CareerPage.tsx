@@ -8,7 +8,8 @@ import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { motion, AnimatePresence } from 'motion/react';
 import { PromoGenerator } from '../PromoGenerator';
-import ReactPlayer from 'react-player';
+import _ReactPlayer from 'react-player';
+const ReactPlayer = _ReactPlayer as any;
 
 export function CareerPage() {
   const { currentUser, userProfile } = useAuth();

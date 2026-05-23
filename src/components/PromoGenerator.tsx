@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Video, Loader2, Play } from 'lucide-react';
-import ReactPlayer from 'react-player';
+import _ReactPlayer from 'react-player';
+const ReactPlayer = _ReactPlayer as any;
 import { GoogleGenAI } from '@google/genai';
 
 interface PromoGeneratorProps {

@@ -2,11 +2,15 @@ import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 
 const MOCK_PRODUCTS = [
-  { id: 1, name: 'Iron Skull Two-Piece Training Set', price: '$55.00', img: 'https://images.unsplash.com/photo-1599839619722-39751411ea63?w=400&q=80', tag: 'BEST SELLER' },
-  { id: 2, name: 'Berserk Anime Training Shorts', price: '$35.00', img: 'https://images.unsplash.com/photo-1594882645126-14020914d58d?w=400&q=80', tag: 'NEW' },
-  { id: 3, name: 'Gingpai Boxing Gloves', price: '$49.99', img: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=400&q=80' },
-  { id: 4, name: 'MMA Grappling Gloves', price: '$39.99', img: 'https://images.unsplash.com/photo-1583468982228-19f19164aee2?w=400&q=80' },
-  { id: 5, name: '4-Piece MMA Mouth Guard Set', price: '$15.99', img: 'https://images.unsplash.com/photo-1628178864703-4f9640f7b0e1?w=400&q=80' }
+  { id: 1, name: 'Dark Anime Double-Layer Shorts', price: '$45.00', img: '/images/anime_shorts.jpg', tag: 'BEST SELLER' },
+  { id: 2, name: 'Strive Tribal MMA Shorts', price: '$40.00', img: '/images/tribal_shorts.jpg', tag: 'NEW' },
+  { id: 3, name: 'MMA Grappling Gloves (Assorted Colors)', price: '$35.00', img: '/images/grappling_gloves.jpg' },
+  { id: 4, name: 'Gingpai Boxing Gloves', price: '$45.99', img: '/images/boxing_gloves.jpg' },
+  { id: 5, name: 'Skeleton Bone Hand MMA Gloves', price: '$39.99', img: '/images/skeleton_gloves.jpg', tag: 'HOT' },
+  { id: 6, name: 'Curved Focus Punching Mitts', price: '$29.99', img: '/images/focus_mitts.jpg' },
+  { id: 7, name: 'Metal Hand Grip Strengthener Set (50-250lb)', price: '$49.99', img: '/images/grip_strengtheners.jpg' },
+  { id: 8, name: '4-Piece MMA Mouth Guard Set', price: '$15.99', img: '/images/mouth_guards.jpg' },
+  { id: 9, name: 'Speed Jump Rope with Weighted Handles', price: '$24.99', img: '/images/jump_rope.jpg' }
 ];
 
 export function StorePage() {

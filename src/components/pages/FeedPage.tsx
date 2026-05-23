@@ -22,7 +22,8 @@ import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import ReactPlayer from 'react-player';
+import _ReactPlayer from 'react-player';
+const ReactPlayer = _ReactPlayer as any;
 
 interface Post {
   id: string;

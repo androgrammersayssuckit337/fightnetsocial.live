@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ReactPlayer from 'react-player';
+import _ReactPlayer from 'react-player';
+const ReactPlayer = _ReactPlayer as any;
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube } from 'lucide-react';
