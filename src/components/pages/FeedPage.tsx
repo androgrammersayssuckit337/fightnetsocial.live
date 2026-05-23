@@ -480,6 +480,7 @@ export function FeedPage() {
                           controls
                           playsinline
                           pip
+                          // @ts-ignore
                           config={{
                             file: {
                               attributes: {
