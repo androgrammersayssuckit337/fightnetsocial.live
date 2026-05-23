@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Navigation } from 'lucide-react';
 import { APIProvider, Map, AdvancedMarker, Pin, useMap, InfoWindow, useAdvancedMarkerRef } from '@vis.gl/react-google-maps';
 import '@googlemaps/extended-component-library/place_picker.js';
+import { fightNetMapStyle } from '../../utils/mapTheme';
 
 const MOCK_GYMS = [
   { id: 1, name: 'P.E. Training Center', distance: '1.2 mi', type: 'MMA, BJJ, Muay Thai', location: 'Lake Charles, LA' },
@@ -110,6 +111,7 @@ export function GymLocatorPage() {
                 defaultCenter={{lat: 30.2266, lng: -92.0198}} // Lafayette, LA center
                 defaultZoom={10}
                 mapId="DEMO_MAP_ID"
+                styles={fightNetMapStyle}
                 internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
                 style={{width: '100%', height: '100%'}}
               >

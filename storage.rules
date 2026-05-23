@@ -16,25 +16,25 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null 
                    && request.resource.size < 10 * 1024 * 1024 // 10MB
-                   && (request.resource.contentType.matches('image/.*') || request.resource.name.toLower().matches('.*\\.(jpg|jpeg|png|gif|webp|heic|heif)'));
+                   && (request.resource.contentType.matches('(?i)image/.*') || request.resource.name.matches('(?i).*\\.(jpg|jpeg|png|gif|webp|heic|heif)$'));
     }
     match /videos/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null 
                    && request.resource.size < 200 * 1024 * 1024 // 200MB
-                   && (request.resource.contentType.matches('video/.*') || request.resource.name.toLower().matches('.*\\.(mp4|mov|avi|wmv|webm|mkv)'));
+                   && (request.resource.contentType.matches('(?i)video/.*') || request.resource.name.matches('(?i).*\\.(mp4|mov|avi|wmv|webm|mkv)$'));
     }
     match /thumbnails/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null 
                    && request.resource.size < 10 * 1024 * 1024 // 10MB
-                   && (request.resource.contentType.matches('image/.*') || request.resource.name.toLower().matches('.*\\.(jpg|jpeg|png|gif|webp|heic|heif)'));
+                   && (request.resource.contentType.matches('(?i)image/.*') || request.resource.name.matches('(?i).*\\.(jpg|jpeg|png|gif|webp|heic|heif)$'));
     }
     match /contracts/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null 
                    && request.resource.size < 20 * 1024 * 1024 // 20MB
-                   && (request.resource.contentType.matches('image/.*|application/pdf') || request.resource.name.toLower().matches('.*\\.(jpg|jpeg|png|pdf)'));
+                   && (request.resource.contentType.matches('(?i)image/.*|(?i)application/pdf') || request.resource.name.matches('(?i).*\\.(jpg|jpeg|png|pdf)$'));
     }
   }
 }

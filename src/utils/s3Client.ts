@@ -1,34 +1,22 @@
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage, auth } from '../firebase';
+
 export async function uploadToS3(file: File): Promise<string> {
-  // 1. Get presigned URL
-  const res = await fetch('/api/s3/presign', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fileName: file.name,
-      fileType: file.type || 'application/octet-stream'
-    }),
-  });
+  const user = auth.currentUser;
+  if (!user) throw new Error('Must be logged in to upload');
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed to get S3 presigned URL');
-  }
-
-  const { uploadUrl, publicUrl } = await res.json();
-
-  // 2. Upload directly to S3
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': file.type || 'application/octet-stream',
-    },
-    body: file,
-  });
-
-  if (!uploadRes.ok) {
-    throw new Error('S3 upload failed');
-  }
-
-  // 3. Return the public URL
-  return publicUrl;
+  // We are using Firebase Storage instead of S3 to ensure Netlify compatibility
+  // without needing an Express backend.
+  const fileExt = file.name.split('.').pop() || 'tmp';
+  const safeName = file.name.replace(/[^a-zA-Z0-9]/g, '_');
+  
+  // Decide folder based on file type
+  const isVideo = file.type.startsWith('video/');
+  const folder = isVideo ? 'videos' : 'images';
+  
+  const path = `${folder}/${user.uid}_${Date.now()}_${safeName}.${fileExt}`;
+  
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
 }
