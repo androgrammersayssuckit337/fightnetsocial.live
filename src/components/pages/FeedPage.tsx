@@ -352,10 +352,7 @@ export function FeedPage() {
              <div className="w-1.5 h-8 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.5)]"></div>
              <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter">Pro-Circuit Feed</h2>
           </div>
-          <div className="flex space-x-2">
-             <div className="px-3 py-1 bg-zinc-900 border border-white/5 text-[10px] font-black uppercase text-zinc-500 rounded-sm">Global</div>
-             <div className="px-3 py-1 bg-white text-black text-[10px] font-black uppercase rounded-sm">Hot</div>
-          </div>
+          <img src="/fightnet-logo.png" alt="FightNet" className="h-10 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
         </div>
 
         <form onSubmit={handleCreatePost} className="bg-zinc-950 border border-white/10 rounded-xl p-6 shadow-2xl relative group overflow-hidden">

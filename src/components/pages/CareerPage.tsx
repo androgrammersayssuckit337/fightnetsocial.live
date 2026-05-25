@@ -35,6 +35,7 @@ export function CareerPage() {
   const [videoClips, setVideoClips] = useState<any[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [showAddVideo, setShowAddVideo] = useState(false);
+  const [videoSortOption, setVideoSortOption] = useState('newest');
   const videoFileRef = useRef<HTMLInputElement>(null);
   const thumbnailFileRef = useRef<HTMLInputElement>(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
@@ -752,17 +753,29 @@ export function CareerPage() {
              <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative z-10 space-y-8">
-                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                     <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3">
+                   <div className="flex justify-between items-center border-b border-white/5 pb-4 md:flex-row flex-col gap-4">
+                     <h2 className="text-xl font-black uppercase italic text-white flex items-center gap-3 w-full md:w-auto">
                        <Video className="w-5 h-5 text-[#E31837]" />
                        Video Clips
                      </h2>
-                     <button 
-                       onClick={() => setShowAddVideo(!showAddVideo)}
-                       className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded uppercase text-[10px] font-black tracking-widest hover:bg-zinc-200 transition-colors"
-                     >
-                       {showAddVideo ? 'Cancel' : <><Plus className="w-4 h-4" /> Add Clip</>}
-                     </button>
+                     <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                       <select 
+                         value={videoSortOption}
+                         onChange={e => setVideoSortOption(e.target.value)}
+                         className="bg-black border border-white/10 rounded px-2 py-1.5 text-[10px] text-zinc-400 uppercase tracking-widest font-bold focus:border-[#E31837] outline-none hover:text-white transition-colors"
+                       >
+                         <option value="newest">Newest First</option>
+                         <option value="oldest">Oldest First</option>
+                         <option value="title-asc">Title (A-Z)</option>
+                         <option value="title-desc">Title (Z-A)</option>
+                       </select>
+                       <button 
+                         onClick={() => setShowAddVideo(!showAddVideo)}
+                         className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded uppercase text-[10px] font-black tracking-widest hover:bg-zinc-200 transition-colors"
+                       >
+                         {showAddVideo ? 'Cancel' : <><Plus className="w-4 h-4" /> Add Clip</>}
+                       </button>
+                     </div>
                    </div>
 
                    {showAddVideo && (
@@ -780,7 +793,7 @@ export function CareerPage() {
                            
                            <div className="space-y-2">
                              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Video (Max 200MB)</label>
-                             <div className="flex items-center gap-4">
+                             <div className="flex items-center gap-4 flex-wrap">
                                <input type="file" ref={videoFileRef} onChange={handleVideoUpload} className="hidden" accept="video/*" />
                                <button type="button" onClick={() => videoFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Video</button>
                                {videoUploadProgress > 0 && <span className="text-xs text-[#E31837] font-bold">{videoUploadProgress === 100 ? 'Processing...' : `${Math.round(videoUploadProgress)}% Uploading...`}</span>}
@@ -790,7 +803,7 @@ export function CareerPage() {
 
                            <div className="space-y-2">
                              <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest ml-1">Upload Thumbnail (Optional, Max 5MB)</label>
-                             <div className="flex items-center gap-4">
+                             <div className="flex items-center gap-4 flex-wrap">
                                <input type="file" ref={thumbnailFileRef} onChange={handleThumbnailUpload} className="hidden" accept="image/*" />
                                <button type="button" onClick={() => thumbnailFileRef.current?.click()} className="bg-zinc-900 border border-white/10 px-6 py-3 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors">Select Thumbnail</button>
                                {thumbnailUploadProgress > 0 && <span className="text-xs text-[#E31837] font-bold">{thumbnailUploadProgress === 100 ? 'Processing...' : `${Math.round(thumbnailUploadProgress)}% Uploading...`}</span>}
@@ -812,7 +825,13 @@ export function CareerPage() {
                      </div>
                    ) : videoClips.length > 0 ? (
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {videoClips.map(clip => (
+                       {[...videoClips].sort((a, b) => {
+                         if (videoSortOption === 'newest') return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0);
+                         if (videoSortOption === 'oldest') return (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0);
+                         if (videoSortOption === 'title-asc') return (a.title || '').localeCompare(b.title || '');
+                         if (videoSortOption === 'title-desc') return (b.title || '').localeCompare(a.title || '');
+                         return 0;
+                       }).map(clip => (
                           <div key={clip.id} className="group/clip bg-zinc-950 rounded-2xl overflow-hidden border border-white/5 flex flex-col">
                              <div className="relative aspect-video bg-black">
                                {/* @ts-ignore */}

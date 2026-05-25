@@ -4,7 +4,8 @@ import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube } from 'lucide-react';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { handleFirestoreError, OperationType } from '../../utils/error';
@@ -194,6 +195,50 @@ export function ProfilePage() {
      }
   };
 
+  const handleDownloadStats = () => {
+    if (!profileData) return;
+    
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFillColor(227, 24, 55); // #E31837 Red
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FIGHTER PORTFOLIO', 15, 25);
+    
+    // Profile Info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(20);
+    doc.text(profileData.displayName || 'Unnamed Combatant', 15, 55);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Role: ${profileData.role?.toUpperCase() || 'N/A'}`, 15, 65);
+    doc.text(`Record: ${profileData.record || '0-0-0'}`, 15, 75);
+    doc.text(`Home Gym: ${profileData.gym || 'Unlisted'}`, 15, 85);
+    
+    const joinedYear = profileData.createdAt?.seconds 
+      ? new Date(profileData.createdAt.seconds * 1000).getFullYear() 
+      : new Date().getFullYear();
+    doc.text(`Joined: ${joinedYear}`, 15, 95);
+    
+    // Bio
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Combat Bio', 15, 115);
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    const splitBio = doc.splitTextToSize(profileData.bio || 'No bio provided.', 180);
+    doc.text(splitBio, 15, 125);
+    
+    // Save
+    doc.save(`${profileData.displayName?.replace(/\s+/g, '_') || 'fighter'}_stats.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
@@ -300,7 +345,15 @@ export function ProfilePage() {
             </div>
 
             <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl space-y-6 shadow-2xl">
-               <h4 className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em] mb-4">Vital Statistics</h4>
+               <div className="flex justify-between items-center mb-4">
+                 <h4 className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.2em]">Vital Statistics</h4>
+                 <button
+                   onClick={handleDownloadStats}
+                   className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-white uppercase font-black tracking-widest transition-colors"
+                 >
+                   <Download className="w-3 h-3" /> PDF
+                 </button>
+               </div>
                
                <div className="space-y-4">
                   <div className="flex justify-between items-center bg-black/50 p-4 rounded-xl border border-white/5">
