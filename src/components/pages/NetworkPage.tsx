@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, limit, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, setDoc, serverTimestamp, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Trophy, Briefcase, Star, MapPin, Database } from 'lucide-react';
+import { Search, Trophy, Briefcase, Star, MapPin, Database, Bell, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function NetworkPage() {
@@ -13,9 +13,62 @@ export function NetworkPage() {
   const { currentUser } = useAuth();
   const [seeding, setSeeding] = useState(false);
 
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [showPending, setShowPending] = useState(false);
+
   useEffect(() => {
     fetchUsers();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchPendingRequests();
+  }, [currentUser]);
+
+  const fetchPendingRequests = async () => {
+    if (!currentUser) return;
+    try {
+        const q = query(
+            collection(db, 'connections'),
+            where('users', 'array-contains', currentUser.uid),
+            where('status', '==', 'pending')
+        );
+        const snapshot = await getDocs(q);
+        const requests = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            // Only keep requests where someone ELSE is the initiator
+            .filter((req: any) => req.initiatorId && req.initiatorId !== currentUser.uid);
+        
+        const requestsWithUsers = await Promise.all(
+            requests.map(async (req: any) => {
+                const otherUserId = req.users.find((id: string) => id !== currentUser.uid);
+                const userDoc = await getDoc(doc(db, 'users', otherUserId));
+                return { ...req, user: { id: userDoc.id, ...userDoc.data() } };
+            })
+        );
+        
+        setPendingRequests(requestsWithUsers.filter(r => r.user));
+    } catch (error) {
+        console.error(error);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+      try {
+          await updateDoc(doc(db, 'connections', requestId), { status: 'accepted' });
+          setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      } catch (err) {
+          console.error(err);
+      }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+      try {
+          await deleteDoc(doc(db, 'connections', requestId));
+          setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+      } catch (err) {
+          console.error(err);
+      }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -69,15 +122,74 @@ export function NetworkPage() {
           <h1 className="text-2xl font-black uppercase text-white tracking-tighter italic mb-1">Combat Directory</h1>
           <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Discover Fighters, Brands and Fans</p>
         </div>
-        <button 
-          onClick={handleSeedData}
-          disabled={seeding}
-          className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-[#E31837] text-white px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-colors"
-        >
-          <Database className="w-4 h-4" />
-          {seeding ? 'Seeding...' : 'Add Test Profiles'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setShowPending(!showPending)}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-colors ${showPending ? 'bg-[#E31837] text-white' : 'bg-zinc-900 border border-zinc-800 hover:border-[#E31837] text-zinc-400 hover:text-white'}`}
+          >
+            <Bell className="w-4 h-4" />
+            Connections
+            {pendingRequests.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-[#E31837] text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+          <button 
+            onClick={handleSeedData}
+            disabled={seeding}
+            className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-[#E31837] text-white px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest transition-colors"
+          >
+            <Database className="w-4 h-4" />
+            {seeding ? 'Seeding...' : 'Add Test Profiles'}
+          </button>
+        </div>
       </header>
+
+      {showPending && (
+        <div className="bg-zinc-950 border border-white/10 rounded-2xl p-6 mb-8 shadow-2xl">
+          <h2 className="text-sm font-black uppercase tracking-widest text-white mb-4 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-[#E31837]" /> Pending Connections
+          </h2>
+          {pendingRequests.length === 0 ? (
+            <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">No pending connection requests.</p>
+          ) : (
+            <div className="space-y-4">
+              {pendingRequests.map(request => (
+                <div key={request.id} className="flex items-center justify-between bg-zinc-900 border border-white/5 p-4 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={request.user.profileImageUrl || `https://ui-avatars.com/api/?name=${request.user.displayName}&background=0c0c0c&color=fff`} 
+                      alt="" 
+                      className="w-12 h-12 rounded-full border border-white/10 object-cover"
+                    />
+                    <div>
+                      <Link to={`/app/profile/${request.user.id}`} className="text-white font-black uppercase tracking-tight hover:text-[#E31837] transition-colors">{request.user.displayName}</Link>
+                      <p className="text-[10px] text-zinc-500 tracking-widest uppercase font-bold">{request.user.role} {request.user.record ? `• ${request.user.record}` : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleAcceptRequest(request.id)}
+                      className="bg-[#E31837] hover:bg-red-700 text-white p-2 rounded-lg transition-colors flex items-center justify-center"
+                      title="Accept"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeclineRequest(request.id)}
+                      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white p-2 rounded-lg transition-colors flex items-center justify-center"
+                      title="Decline"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-4 border-b border-[#222] mb-6">
         {[

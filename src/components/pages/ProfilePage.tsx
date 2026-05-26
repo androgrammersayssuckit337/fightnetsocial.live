@@ -157,6 +157,7 @@ export function ProfilePage() {
         await setDoc(doc(db, 'connections', docId), {
            users: [currentUser.uid, userId],
            status: 'pending',
+           initiatorId: currentUser.uid,
            createdAt: serverTimestamp()
         });
         setConnectionStatus('pending');

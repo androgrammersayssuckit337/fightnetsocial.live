@@ -154,8 +154,7 @@ export function FeedPage() {
         mimeType = fileExt && ['mp4','mov','avi','mkv','webm','wmv'].includes(fileExt) ? 'video/mp4' : 'image/jpeg';
     }
     
-    const folder = mimeType.startsWith('video') ? 'videos' : 'images';
-    const fileName = `${folder}/${currentUser.uid}_${Date.now()}.${fileExt}`;
+    const fileName = `posts/${currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
