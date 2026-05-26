@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
 import { 
@@ -55,8 +55,17 @@ const EMOJI_OPTIONS = ['🔥', '🥊', '💯', '💪', '🧊'];
 
 export function FeedPage() {
   const { currentUser, userProfile } = useAuth();
+  const location = useLocation();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
+
+  useEffect(() => {
+    if (location.state?.prefillPost) {
+      setNewPostContent(location.state.prefillPost);
+      // Clear state so it doesn't prefill again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [openReactionPostId, setOpenReactionPostId] = useState<string | null>(null);
@@ -145,7 +154,8 @@ export function FeedPage() {
         mimeType = fileExt && ['mp4','mov','avi','mkv','webm','wmv'].includes(fileExt) ? 'video/mp4' : 'image/jpeg';
     }
     
-    const fileName = `posts/${currentUser.uid}_${Date.now()}.${fileExt}`;
+    const folder = mimeType.startsWith('video') ? 'videos' : 'images';
+    const fileName = `${folder}/${currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     const metadata = { contentType: mimeType };
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);

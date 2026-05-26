@@ -4,7 +4,7 @@ import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download } from 'lucide-react';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download, AtSign } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -278,30 +278,14 @@ export function ProfilePage() {
         ) : (
           <div className="flex gap-4">
             <button 
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      successUrl: window.location.href,
-                      cancelUrl: window.location.href,
-                      customerEmail: currentUser?.email || ''
-                    })
-                  });
-                  const data = await response.json();
-                  if (data.url) {
-                    window.location.href = data.url;
-                  } else {
-                    alert(data.error || 'Checkout failed. Ensure SQUARE_ACCESS_TOKEN is configured.');
-                  }
-                } catch (error) {
-                  alert('Error processing subscription.');
-                }
+              onClick={() => {
+                navigate('/app/feed', { 
+                  state: { prefillPost: `@${profileData.displayName?.replace(/\s+/g, '') || profileData.email?.split('@')[0]} ` } 
+                });
               }}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-[#E31837] text-white hover:bg-red-700 shadow-[0_0_15px_rgba(227,24,55,0.4)]"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-[#0a0a0a] text-[#E31837] border border-[#E31837] hover:bg-[#E31837] hover:text-white shadow-[0_0_15px_rgba(227,24,55,0.2)]"
             >
-              Support Fighter
+              <AtSign className="w-4 h-4" /> Tag in Post
             </button>
             {connectionStatus === 'accepted' ? (
                <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-zinc-900 text-white border border-green-500/30 text-green-500">
