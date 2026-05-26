@@ -33,6 +33,7 @@ interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  googleAccessToken: string | null;
   loginWithGoogle: (role?: 'fighter' | 'fan' | 'sponsor') => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string, role: 'fighter' | 'fan' | 'sponsor') => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -85,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         setUserProfile(null);
+        setGoogleAccessToken(null);
         setLoading(false);
       }
     });
@@ -127,8 +130,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async (role: 'fighter' | 'fan' | 'sponsor' = 'fan') => {
     const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/calendar');
+    provider.addScope('https://www.googleapis.com/auth/chat');
+    provider.addScope('https://www.googleapis.com/auth/forms');
+    
     try {
       const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setGoogleAccessToken(credential.accessToken);
+      }
       await ensureProfile(result.user, role);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
@@ -180,6 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     currentUser,
     userProfile,
     loading,
+    googleAccessToken,
     loginWithGoogle,
     registerWithEmail,
     loginWithEmail,
