@@ -8,7 +8,7 @@ service cloud.firestore {
 
     // Primitive Helpers
     function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); 
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
@@ -186,8 +186,7 @@ service cloud.firestore {
     }
 
     match /posts/{postId} {
-      allow get: if isSignedIn() && isValidId(postId);
-      allow list: if isSignedIn();
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
       allow update: if isSignedIn() && (
                       (

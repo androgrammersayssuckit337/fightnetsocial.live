@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, CheckCircle2, Circle, Calendar, Link as LinkIcon, Download, ListTodo } from 'lucide-react';
+import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, CheckCircle2, Circle, Calendar, Link as LinkIcon, Download, ListTodo, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../firebase';
 import { doc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -46,6 +46,9 @@ export function CareerPage() {
     videoUrl: '',
     thumbnailUrl: ''
   });
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editVideoTitle, setEditVideoTitle] = useState('');
+  const [editVideoDescription, setEditVideoDescription] = useState('');
 
   const [trainingTasks, setTrainingTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
@@ -299,6 +302,50 @@ export function CareerPage() {
       setVideoClips(prev => prev.filter(v => v.id !== videoId));
     } catch (error) {
        handleFirestoreError(error, OperationType.DELETE, `videoClips/${videoId}`, auth);
+    }
+  };
+
+  const handleEditVideoStart = (clip: any) => {
+    setEditingVideoId(clip.id);
+    setEditVideoTitle(clip.title || '');
+    setEditVideoDescription(clip.description || '');
+  };
+
+  const handleUpdateVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVideoId || !auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, 'videoClips', editingVideoId), {
+        title: editVideoTitle,
+        description: editVideoDescription
+      });
+      setVideoClips(prev => prev.map(c => c.id === editingVideoId ? { ...c, title: editVideoTitle, description: editVideoDescription } : c));
+      setEditingVideoId(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `videoClips/${editingVideoId}`, auth);
+    }
+  };
+
+  const handleCancelEditVideo = () => {
+      setEditingVideoId(null);
+      setEditVideoTitle('');
+      setEditVideoDescription('');
+  };
+
+  const handleShareVideo = async (clip: any) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: clip.title || 'Check out my performance tape',
+          text: clip.description || `Watch this performance tape by ${userProfile?.displayName || 'me'}!`,
+          url: clip.videoUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(clip.videoUrl);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
     }
   };
 
@@ -843,17 +890,48 @@ export function CareerPage() {
                                  playsinline
                                  light={clip.thumbnailUrl || true}
                                />
-                               <div className="absolute top-4 right-4 z-10 flex opacity-0 group-hover/clip:opacity-100 transition-opacity">
+                               <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover/clip:opacity-100 transition-opacity">
+                                  <button onClick={() => handleShareVideo(clip)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-[#E31837] transition-colors border border-white/10 pointer-events-auto" title="Share Video">
+                                     <Share2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => handleEditVideoStart(clip)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-blue-500 transition-colors border border-white/10 pointer-events-auto" title="Edit Video">
+                                     <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
                                   <button onClick={() => handleDeleteVideo(clip.id)} className="bg-black/60 backdrop-blur-sm p-1.5 rounded text-white hover:text-red-500 transition-colors border border-white/10 pointer-events-auto">
                                      <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                </div>
                              </div>
                              <div className="p-4 flex flex-col gap-1 flex-1">
-                                <h3 className="font-bold text-white text-sm uppercase tracking-tight line-clamp-1">{clip.title}</h3>
-                                {clip.description && (
-                                  <p className="text-zinc-400 text-xs line-clamp-2">{clip.description}</p>
-                                )}
+                               {editingVideoId === clip.id ? (
+                                 <form onSubmit={handleUpdateVideo} className="flex flex-col gap-2">
+                                   <input 
+                                     type="text" 
+                                     value={editVideoTitle} 
+                                     onChange={(e) => setEditVideoTitle(e.target.value)}
+                                     className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#E31837]"
+                                     placeholder="Video Title"
+                                     required
+                                   />
+                                   <textarea 
+                                     value={editVideoDescription} 
+                                     onChange={(e) => setEditVideoDescription(e.target.value)}
+                                     className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm h-20 resize-none focus:outline-none focus:border-[#E31837]"
+                                     placeholder="Description"
+                                   ></textarea>
+                                   <div className="flex gap-2 justify-end mt-2">
+                                     <button type="button" onClick={handleCancelEditVideo} className="px-3 py-1.5 rounded bg-zinc-800 text-xs text-white uppercase font-bold hover:bg-zinc-700 transition">Cancel</button>
+                                     <button type="submit" className="px-3 py-1.5 rounded bg-[#E31837] text-xs text-white uppercase font-bold hover:bg-red-700 transition">Save</button>
+                                   </div>
+                                 </form>
+                               ) : (
+                                 <>
+                                   <h3 className="font-bold text-white text-sm uppercase tracking-tight line-clamp-1">{clip.title}</h3>
+                                   {clip.description && (
+                                     <p className="text-zinc-400 text-xs line-clamp-2">{clip.description}</p>
+                                   )}
+                                 </>
+                               )}
                              </div>
                           </div>
                        ))}
