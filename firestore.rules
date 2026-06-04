@@ -176,8 +176,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && isValidId(userId);
-      allow list: if isSignedIn();
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && (isOwner(userId) || isBot(userId)) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email', 'socialLinks']) &&

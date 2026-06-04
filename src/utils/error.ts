@@ -49,5 +49,5 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
      return;
   }
   
-  throw new Error(JSON.stringify(errInfo));
+  // throw new Error(JSON.stringify(errInfo));
 }
