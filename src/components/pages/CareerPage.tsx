@@ -727,7 +727,17 @@ export function CareerPage() {
               <Award className="w-8 h-8 text-[#E31837] relative z-10" />
               <h2 className="text-lg font-black uppercase tracking-tight relative z-10">Pro Status Assessment</h2>
               <p className="text-xs text-zinc-400 max-w-sm relative z-10">Submit your tape and stats to our advocating agents to see if you're ready to bridge to Pro.</p>
-              <button className="bg-[#E31837] px-6 py-2 uppercase text-[10px] font-bold mt-4 hover:bg-red-700 text-white w-full rounded relative z-10 border border-white/10 shadow-[0_0_15px_rgba(227,24,55,0.2)]">Submit Tape</button>
+              <button 
+                onClick={() => {
+                  setShowAddVideo(true);
+                  setTimeout(() => {
+                    document.getElementById('video-clips-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }} 
+                className="bg-[#E31837] px-6 py-2 uppercase text-[10px] font-bold mt-4 hover:bg-red-700 text-white w-full rounded relative z-10 border border-white/10 shadow-[0_0_15px_rgba(227,24,55,0.2)]"
+              >
+                Submit Tape
+              </button>
             </div>
 
             <div className="bg-zinc-900 border border-zinc-800 p-6 flex flex-col items-center text-center space-y-4 hover:border-[#E31837] transition-colors relative overflow-hidden rounded-lg">
@@ -797,7 +807,7 @@ export function CareerPage() {
           )}
 
           {userProfile?.role === 'fighter' && (
-             <div className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
+             <div id="video-clips-section" className="bg-zinc-950 border border-white/5 p-8 rounded-3xl mt-12 shadow-2xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#E31837]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative z-10 space-y-8">
                    <div className="flex justify-between items-center border-b border-white/5 pb-4 md:flex-row flex-col gap-4">

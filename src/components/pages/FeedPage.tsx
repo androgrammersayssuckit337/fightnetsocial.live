@@ -20,7 +20,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield } from 'lucide-react';
+import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
@@ -58,7 +58,8 @@ export function FeedPage() {
   const location = useLocation();
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
-
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
   useEffect(() => {
     if (location.state?.prefillPost) {
       setNewPostContent(location.state.prefillPost);
@@ -184,9 +185,9 @@ export function FeedPage() {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!newPostContent.trim() && !fileInputRef.current?.files?.[0]) || !currentUser) return;
+    if ((!newPostContent.trim() && !selectedFile) || !currentUser) return;
 
-    const file = fileInputRef.current?.files?.[0];
+    const file = selectedFile;
     if (file && file.size > 200 * 1024 * 1024) {
       alert("Performance tape too heavy. Max 200MB.");
       return;
@@ -215,6 +216,7 @@ export function FeedPage() {
       });
       
       setNewPostContent('');
+      setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploadProgress(0);
     } catch (error) {
@@ -355,13 +357,27 @@ export function FeedPage() {
   return (
     <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-[#0a0a0a]">
       {/* Feed Section */}
-      <section className="flex-1 border-r border-white/5 p-4 md:p-8 space-y-8 overflow-y-auto scrollbar-hide">
-        <div className="flex items-center justify-between mb-2">
+      <motion.section 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex-1 border-r border-white/5 p-4 md:p-8 space-y-8 overflow-y-auto scrollbar-hide"
+      >
+        <div className="flex items-center justify-between mb-2 group cursor-default">
           <div className="flex items-center gap-3">
-             <div className="w-1.5 h-8 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.5)]"></div>
-             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter">Pro-Circuit Feed</h2>
+             <motion.div 
+               animate={{ height: [32, 40, 32] }}
+               transition={{ duration: 2, repeat: Infinity }}
+               className="w-1.5 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.8)] rounded-full"
+             ></motion.div>
+             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter group-hover:tracking-wider transition-all duration-500">Pro-Circuit Feed</h2>
           </div>
-          <img src="/fightnet-logo.png" alt="FightNet" className="h-10 object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
+          <motion.div 
+            whileHover={{ rotate: 180, scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 10 }}
+            className="w-10 h-10 bg-zinc-900 rounded-full border border-white/10 flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+          >
+            <Shield className="w-5 h-5 text-white" />
+          </motion.div>
         </div>
 
         <form onSubmit={handleCreatePost} className="bg-zinc-950 border border-white/10 rounded-xl p-6 shadow-2xl relative group overflow-hidden">
@@ -405,18 +421,35 @@ export function FeedPage() {
                         accept="video/*,image/*"
                         onChange={(e) => {
                           if (e.target.files?.[0]) {
-                            const name = e.target.files[0].name;
-                            const isVid = e.target.files[0].type.includes('video');
-                            setNewPostContent(prev => prev || `Fresh ${isVid ? 'tape' : 'shot'}: ${name}`);
+                            setSelectedFile(e.target.files[0]);
                           }
                         }}
                       />
+                      {selectedFile && (
+                        <div className="relative inline-block mt-2">
+                           {selectedFile.type.startsWith('video') ? (
+                             <div className="relative w-20 h-20 bg-black rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
+                               <Play className="w-6 h-6 text-white absolute z-10" />
+                               <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover opacity-50" />
+                             </div>
+                           ) : (
+                             <img src={URL.createObjectURL(selectedFile)} alt="preview" className="w-20 h-20 object-cover rounded-lg border border-white/10" />
+                           )}
+                           <button 
+                             type="button" 
+                             onClick={(e) => { e.preventDefault(); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ''; }}
+                             className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-500"
+                           >
+                             <X className="w-3 h-3" />
+                           </button>
+                        </div>
+                      )}
                    </div>
                    <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     type="submit" 
-                    disabled={isSubmitting || (!newPostContent.trim() && !fileInputRef.current?.files?.[0])}
+                    disabled={isSubmitting || (!newPostContent.trim() && !selectedFile)}
                     className="bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
                    >
                      {isSubmitting ? 'Locking in...' : 'Publish'}
@@ -438,11 +471,17 @@ export function FeedPage() {
             >
               {/* Post Header */}
               <div className="flex items-start justify-between mb-4">
-                 <div className="flex items-center gap-4">
-                   <Link to={`/app/profile/${post.authorId}`} className="relative hover:opacity-80 transition-opacity">
-                      <img src={post.authorImage || `https://ui-avatars.com/api/?name=${post.authorName}&background=000&color=fff`} className="w-12 h-12 rounded-full border-2 border-white/5 object-cover" alt="" />
+                <div className="flex items-center gap-4">
+                   <Link to={`/app/profile/${post.authorId}`} className="relative group/avatar block">
+                      <motion.img 
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        src={post.authorImage || `https://ui-avatars.com/api/?name=${post.authorName}&background=000&color=fff`} 
+                        className="w-12 h-12 rounded-full border-2 border-white/5 object-cover relative z-10" 
+                        alt="" 
+                      />
+                      <div className="absolute inset-0 rounded-full bg-[#E31837] blur-md opacity-0 group-hover/avatar:opacity-40 transition-opacity"></div>
                       {post.authorRole === 'fighter' && (
-                        <div className="absolute -bottom-1 -right-1 bg-[#E31837] text-white p-0.5 rounded-full border-2 border-black">
+                        <div className="absolute -bottom-1 -right-1 bg-[#E31837] text-white p-0.5 rounded-full border-2 border-black z-20">
                           <Trophy className="w-3 h-3" />
                         </div>
                       )}
@@ -671,7 +710,7 @@ export function FeedPage() {
             <p className="text-sm font-black italic mt-2 text-white uppercase tracking-tight">Marcus 'Apex' Chen signs with Agent X Pro</p>
           </div>
         </div>
-      </section>
+        </motion.section>
 
       {/* Side Profile/Navigator - Desktop only */}
       <aside className="w-80 flex-col p-8 space-y-10 bg-[#0c0c0c] hidden lg:flex shrink-0 overflow-y-auto border-l border-white/5 scrollbar-hide">

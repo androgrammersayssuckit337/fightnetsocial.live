@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Settings, Moon, Sun, Upload, Shield, LogOut, ChevronRight, Bot, Zap, MessageCircle, Heart } from 'lucide-react';
+import { Settings, Moon, Sun, Upload, Shield, LogOut, ChevronRight, Bot, Zap, MessageCircle, Heart, User, Loader2, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ensureBotsExist, triggerBotPost, triggerBotReactions, triggerBotComments } from '../../services/botService';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { collection, getDocs, limit, query, doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import { uploadToS3 } from '../../utils/s3Client';
+import { motion } from 'motion/react';
 
 export function SettingsPage() {
   const { logout } = useAuth();
@@ -15,6 +17,27 @@ export function SettingsPage() {
   const [mediaUploadsOnMobile, setMediaUploadsOnMobile] = useState(false);
   const [allowLocation, setAllowLocation] = useState(true);
   const [isBotWorking, setIsBotWorking] = useState(false);
+  const [isUploadingObj, setIsUploadingObj] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.currentUser) return;
+    
+    setIsUploadingObj(true);
+    try {
+      const downloadURL = await uploadToS3(file, 'profiles');
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, { profileImageUrl: downloadURL });
+      alert('Profile image updated successfully!');
+      window.location.reload();
+    } catch (err: any) {
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploadingObj(false);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   const handleSeedBots = async () => {
     setIsBotWorking(true);
@@ -87,6 +110,51 @@ export function SettingsPage() {
 
         <div className="space-y-6">
           
+          {/* Appearance */}
+          <section className="bg-zinc-950 border border-white/5 rounded-2xl p-6">
+            <h2 className="text-xs font-black uppercase text-zinc-500 tracking-widest mb-6">Profile Settings</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-20 h-20 rounded-full bg-zinc-900 border-2 border-dashed border-zinc-700 flex items-center justify-center text-white overflow-hidden cursor-pointer hover:border-[#E31837] hover:bg-zinc-800 transition-all group relative shadow-2xl"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {auth.currentUser?.photoURL ? (
+                     <img src={auth.currentUser.photoURL} className="w-full h-full object-cover group-hover:scale-110 group-hover:opacity-50 transition-all duration-300" alt="Profile" />
+                  ) : (
+                     <User className="w-8 h-8 text-zinc-600 group-hover:text-[#E31837] transition-colors" />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                     <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </motion.div>
+                <div>
+                  <p className="text-sm font-bold text-white">Profile Picture</p>
+                  <p className="text-xs text-zinc-500 max-w-xs mt-1">Click the avatar to upload a generic square image (JPG, PNG). Max 10MB.</p>
+                </div>
+              </div>
+              <div className="w-full sm:w-auto">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  accept="image/*" 
+                  onChange={handleProfileImageUpload} 
+                  className="hidden" 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingObj}
+                  className="w-full sm:w-auto bg-zinc-900 border border-white/10 px-6 py-2.5 rounded-xl text-xs text-white uppercase font-bold hover:bg-zinc-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isUploadingObj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {isUploadingObj ? 'Uploading...' : 'Upload New'}
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Appearance */}
           <section className="bg-zinc-950 border border-white/5 rounded-2xl p-6">
             <h2 className="text-xs font-black uppercase text-zinc-500 tracking-widest mb-6">Appearance</h2>

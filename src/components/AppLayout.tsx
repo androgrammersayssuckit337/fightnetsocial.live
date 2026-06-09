@@ -121,22 +121,35 @@ export function AppLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-[#222] flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0a0a0a]">
-          <div className="flex items-center space-x-6">
-            <div className="md:hidden text-zinc-500 text-[10px] font-mono uppercase truncate max-w-[150px]">[ Live: amateur_04 ]</div>
-            <div className="hidden md:block text-zinc-500 text-xs font-mono uppercase">[ Live Stream: amateur_circuit_04 ]</div>
+        <motion.header 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="h-16 border-b border-[#222] flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-50 shadow-md"
+        >
+          <div className="flex items-center space-x-6 relative">
+             <motion.div 
+               animate={{ opacity: [1, 0.5, 1] }} 
+               transition={{ duration: 2, repeat: Infinity }}
+               className="absolute -left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#EF4444]"
+             />
+            <div className="md:hidden text-zinc-500 text-[10px] font-mono uppercase truncate max-w-[150px] ml-2 tracking-widest">[ Live : amateur_04 ]</div>
+            <div className="hidden md:block text-zinc-500 text-xs font-mono uppercase ml-2 tracking-widest">[ System : amateur_circuit_04 : Connected ]</div>
           </div>
           <div className="flex items-center space-x-4">
             {!userProfile?.profileImageUrl && (
-              <Link to="/app/career" className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-[#E31837]/30 text-[#E31837] text-[9px] font-black uppercase rounded animate-pulse">
-                Complete Profile
-              </Link>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link to="/app/career" className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-[#E31837]/30 text-[#E31837] text-[9px] font-black uppercase rounded animate-pulse shadow-[0_0_10px_rgba(227,24,55,0.2)]">
+                  Complete Profile
+                </Link>
+              </motion.div>
             )}
-            <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors md:hidden">
-              <Settings className="w-5 h-5" />
-            </Link>
+            <motion.div whileHover={{ rotate: 90 }} transition={{ type: "spring", stiffness: 200, damping: 10 }}>
+              <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors block md:hidden bg-zinc-900/50 rounded-full border border-white/5">
+                <Settings className="w-5 h-5" />
+              </Link>
+            </motion.div>
           </div>
-        </header>
+        </motion.header>
 
         <div className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto custom-scrollbar relative overflow-x-hidden">
           <AnimatePresence mode="wait">
