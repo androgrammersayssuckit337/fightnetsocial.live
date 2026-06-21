@@ -7,6 +7,7 @@ import { collection, getDocs, limit, query, doc, updateDoc } from 'firebase/fire
 import { db, auth } from '../../firebase';
 import { uploadToS3 } from '../../utils/s3Client';
 import { motion } from 'motion/react';
+import { CameraCapture } from '../CameraCapture';
 
 export function SettingsPage() {
   const { logout } = useAuth();
@@ -18,12 +19,11 @@ export function SettingsPage() {
   const [allowLocation, setAllowLocation] = useState(true);
   const [isBotWorking, setIsBotWorking] = useState(false);
   const [isUploadingObj, setIsUploadingObj] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
-    
+  const processProfileImageFile = async (file: File) => {
+    if (!auth.currentUser) return;
     setIsUploadingObj(true);
     try {
       const downloadURL = await uploadToS3(file, 'profiles');
@@ -35,8 +35,14 @@ export function SettingsPage() {
       alert(`Upload failed: ${err.message}`);
     } finally {
       setIsUploadingObj(false);
-      if (e.target) e.target.value = '';
     }
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processProfileImageFile(file);
+    if (e.target) e.target.value = '';
   };
 
   const handleSeedBots = async () => {
@@ -135,7 +141,7 @@ export function SettingsPage() {
                   <p className="text-xs text-zinc-500 max-w-xs mt-1">Click the avatar to upload a generic square image (JPG, PNG). Max 10MB.</p>
                 </div>
               </div>
-              <div className="w-full sm:w-auto">
+              <div className="w-full sm:w-auto flex flex-col gap-2">
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -143,6 +149,14 @@ export function SettingsPage() {
                   onChange={handleProfileImageUpload} 
                   className="hidden" 
                 />
+                <button 
+                  onClick={() => setShowCamera(true)}
+                  disabled={isUploadingObj}
+                  className="w-full sm:w-auto bg-[#E31837] border border-white/10 px-6 py-2.5 rounded-xl text-xs text-white uppercase font-bold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Take Photo
+                </button>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingObj}
@@ -304,6 +318,16 @@ export function SettingsPage() {
 
         </div>
       </div>
+      
+      {showCamera && (
+        <CameraCapture 
+           onCapture={(file) => {
+             setShowCamera(false);
+             processProfileImageFile(file);
+           }}
+           onCancel={() => setShowCamera(false)}
+        />
+      )}
     </div>
   );
 }

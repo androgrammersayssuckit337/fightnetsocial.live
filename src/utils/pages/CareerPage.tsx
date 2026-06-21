@@ -8,6 +8,7 @@ import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { motion, AnimatePresence } from 'motion/react';
 import { PromoGenerator } from '../PromoGenerator';
+import { CameraCapture } from '../CameraCapture';
 import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
 
@@ -17,6 +18,7 @@ export function CareerPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [contracts, setContracts] = useState<any[]>([]);
@@ -422,9 +424,8 @@ export function CareerPage() {
     }
   };
 
-  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
+  const processProfilePicFile = async (file: File) => {
+    if (!auth.currentUser) return;
 
     if (file.size > 5 * 1024 * 1024) {
       alert("File too large. Max 5MB.");
@@ -432,12 +433,12 @@ export function CareerPage() {
     }
 
     setIsUploading(true);
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `profiles/${auth.currentUser.uid}_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, fileName);
     
-    const metadata = { contentType: getMimeType(file) };
-    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+    // We already have getMimeType internally
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on('state_changed', 
       (snapshot) => {
@@ -468,6 +469,13 @@ export function CareerPage() {
         }
       }
     );
+  };
+
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processProfilePicFile(file);
+    if (e.target) e.target.value = '';
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -523,17 +531,30 @@ export function CareerPage() {
                          className="relative w-40 h-40 rounded-full border-4 border-black object-cover shadow-2xl transition-transform duration-500 group-hover:scale-105" 
                          alt="Profile"
                         />
-                        <button 
-                         type="button"
-                         onClick={() => fileInputRef.current?.click()}
-                         className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
+                        <div className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 gap-2">
                           {isUploading ? (
                             <Loader2 className="w-8 h-8 animate-spin text-white" />
                           ) : (
-                            <Camera className="w-8 h-8 text-white" />
+                            <>
+                              <button 
+                                type="button"
+                                onClick={() => setShowCamera(true)}
+                                className="w-10 h-10 rounded-full bg-[#E31837] hover:bg-red-600 flex items-center justify-center text-white transition-colors border border-white/20 shadow-lg"
+                                title="Take Photo"
+                              >
+                                <Camera className="w-4 h-4" />
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-white transition-colors border border-white/20 shadow-lg"
+                                title="Upload File"
+                              >
+                                <Upload className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
-                        </button>
+                        </div>
                         <input 
                          type="file" 
                          ref={fileInputRef} 
@@ -1099,6 +1120,16 @@ export function CareerPage() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      {showCamera && (
+        <CameraCapture 
+          onCapture={(file) => {
+            setShowCamera(false);
+            processProfilePicFile(file);
+          }}
+          onCancel={() => setShowCamera(false)}
+        />
+      )}
     </div>
   );
 }
