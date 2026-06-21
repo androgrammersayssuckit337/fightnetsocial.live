@@ -36,6 +36,7 @@ service cloud.firestore {
              data.authorId is string && (data.authorId == request.auth.uid || isBot(data.authorId)) &&
              data.content is string && data.content.size() <= 2000 &&
              (data.createdAt is timestamp || data.createdAt is number) &&
+             (data.get('category', 'general') in ['highlight', 'result', 'matchup', 'general']) &&
              (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 2500) &&
              (data.get('mediaType', '') in ['', 'video', 'image']) &&
              (data.get('likesCount', 0) is number) &&
@@ -190,7 +191,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
                       (
                         existing().authorId == request.auth.uid && isValidPost(incoming()) &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'mediaUrl', 'mediaType', 'createdAt']) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'category', 'mediaUrl', 'mediaType', 'createdAt']) &&
                         incoming().authorId == existing().authorId
                       ) ||
                       (

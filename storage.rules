@@ -6,6 +6,10 @@ service firebase.storage {
              request.resource.name.matches('(?i).*\\.(jpg|jpeg|png|gif|webp|mp4|mov|avi|wmv|webm|mkv|heic|heif)$');
     }
 
+    match /images/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.resource.size < 100 * 1024 * 1024;
+    }
     match /posts/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.resource.size < 200 * 1024 * 1024;

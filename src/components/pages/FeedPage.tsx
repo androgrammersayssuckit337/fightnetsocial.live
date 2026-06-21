@@ -20,7 +20,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X } from 'lucide-react';
+import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X, Swords, Zap, Filter, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
@@ -29,6 +29,7 @@ interface Post {
   id: string;
   authorId: string;
   content: string;
+  category?: 'highlight' | 'result' | 'matchup' | 'general';
   mediaUrl?: string;
   mediaType?: 'video' | 'image';
   likesCount: number;
@@ -59,6 +60,8 @@ export function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [postCategory, setPostCategory] = useState<'highlight' | 'result' | 'matchup' | 'general'>('general');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'highlight' | 'result' | 'matchup'>('all');
   
   useEffect(() => {
     if (location.state?.prefillPost) {
@@ -207,6 +210,7 @@ export function FeedPage() {
       await addDoc(collection(db, 'posts'), {
         authorId: currentUser.uid,
         content: newPostContent.trim(),
+        category: postCategory,
         createdAt: serverTimestamp(),
         likesCount: 0,
         commentsCount: 0,
@@ -217,6 +221,7 @@ export function FeedPage() {
       
       setNewPostContent('');
       setSelectedFile(null);
+      setPostCategory('general');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploadProgress(0);
     } catch (error) {
@@ -444,23 +449,55 @@ export function FeedPage() {
                            </button>
                         </div>
                       )}
+                      <div className="flex gap-2">
+                        {['general', 'highlight', 'result', 'matchup'].map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setPostCategory(cat as any)}
+                            className={`px-3 py-1 text-[10px] uppercase font-black tracking-widest rounded-full transition-colors ${postCategory === cat ? 'bg-[#E31837] text-white' : 'bg-transparent text-zinc-500 hover:text-white border border-white/10 hover:bg-white/5'}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
                    </div>
                    <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     type="submit" 
                     disabled={isSubmitting || (!newPostContent.trim() && !selectedFile)}
-                    className="bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
+                    className="flex items-center gap-2 bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
                    >
-                     {isSubmitting ? 'Locking in...' : 'Publish'}
+                     {isSubmitting ? 'Locking in...' : (
+                       <>
+                         <span>POST</span>
+                         <Send className="w-4 h-4 ml-1" />
+                       </>
+                     )}
                    </motion.button>
                 </div>
               </div>
             </div>
           </form>
+
+        <div className="flex items-center gap-2 md:gap-4 border-b border-white/10 pb-4 overflow-x-auto scrollbar-hide">
+           <Filter className="w-4 h-4 text-zinc-500 shrink-0" />
+           {[{id: 'all', label: 'All'}, {id: 'highlight', label: 'Highlights', icon: Zap}, {id: 'result', label: 'Results', icon: Trophy}, {id: 'matchup', label: 'Matchups', icon: Swords}].map(filter => (
+             <button
+               key={filter.id}
+               onClick={() => setFilterCategory(filter.id as any)}
+               className={`flex items-center shrink-0 gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${filterCategory === filter.id ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10'}`}
+             >
+               {filter.icon && <filter.icon className="w-4 h-4" />}
+               {filter.label}
+             </button>
+           ))}
+        </div>
+
         <div className="space-y-12">
           <AnimatePresence>
-          {posts.map(post => (
+          {posts.filter(p => filterCategory === 'all' || p.category === filterCategory).map(post => (
             <motion.div 
               key={post.id} 
               initial={{ opacity: 0, y: 20 }}
@@ -495,6 +532,11 @@ export function FeedPage() {
                      </div>
                      <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(post.createdAt)} ago</span>
+                        {post.category && post.category !== 'general' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded border border-white/10 uppercase font-black text-zinc-400 bg-zinc-900">
+                            {post.category}
+                          </span>
+                        )}
                         {post.authorGym && (
                           <span className="flex items-center gap-1 text-[10px] text-zinc-700 font-bold uppercase">
                             <MapPin className="w-2.5 h-2.5" />
@@ -655,9 +697,10 @@ export function FeedPage() {
                       whileTap={{ scale: 0.95 }}
                       type="submit" 
                       disabled={!newCommentText.trim() || isSubmittingComment}
-                      className="text-[#E31837] font-black uppercase text-xs tracking-wider disabled:opacity-50"
+                      className="text-[#E31837] font-black uppercase text-xs tracking-wider disabled:opacity-50 flex items-center gap-1"
                     >
-                      Post
+                      <span>POST</span>
+                      <Send className="w-3 h-3" />
                     </motion.button>
                   </form>
 
