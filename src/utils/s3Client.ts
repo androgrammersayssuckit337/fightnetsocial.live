@@ -1,5 +1,5 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage, auth } from '../firebase';
+import { storage, auth } from '../services/firebase';
 
 export async function uploadToS3(file: File, folder: string = 'images'): Promise<string> {
   const user = auth.currentUser;

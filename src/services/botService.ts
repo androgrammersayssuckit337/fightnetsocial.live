@@ -11,7 +11,7 @@ import {
   updateDoc, 
   increment as firestoreIncrement 
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from './firebase';
 import { GoogleGenAI } from '@google/genai';
 
 const MOCK_BOTS = [
