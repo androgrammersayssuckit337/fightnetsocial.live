@@ -8,7 +8,6 @@ import { LandingPage } from './pages/LandingPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { SponsorsPage } from './pages/SponsorsPage';
 import { GymLocatorPage } from './pages/GymLocatorPage';
-import { StorePage } from './pages/StorePage';
 import { CareerPage } from './pages/CareerPage';
 import { SchedulesPage } from './pages/SchedulesPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -33,7 +32,7 @@ export function AppLayout() {
     { label: 'Messenger', path: '/app/messages', icon: MessageSquare },
     { label: 'Gym Locator', path: '/app/gyms', icon: MapPin },
     { label: 'Schedules', path: '/app/schedules', icon: Calendar },
-    { label: 'FightNet Shop', path: '/app/store', icon: ShoppingCart },
+    { label: 'FightNet Shop', path: 'https://fightnetstore.netlify.app', icon: ShoppingCart, external: true },
     { label: 'Settings', path: '/app/settings', icon: Settings },
   ];
   
@@ -55,6 +54,23 @@ export function AppLayout() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
+            
+            if (item.external) {
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={item.label}
+                  className={`flex items-center justify-center md:justify-start px-0 md:px-6 py-3 transition-colors group text-zinc-400 hover:bg-zinc-900 hover:text-white border-l-4 border-transparent`}
+                >
+                  <Icon className="w-5 h-5 shrink-0 text-zinc-500 group-hover:text-white transition-colors" />
+                  <span className="text-sm font-semibold ml-4 hidden md:block italic">{item.label}</span>
+                </a>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
@@ -160,7 +176,6 @@ export function AppLayout() {
               <Route path="/sponsors" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><SponsorsPage /></motion.div>} />
               <Route path="/gyms" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><GymLocatorPage /></motion.div>} />
               <Route path="/schedules" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><SchedulesPage /></motion.div>} />
-              <Route path="/store" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><StorePage /></motion.div>} />
               <Route path="/career" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><CareerPage /></motion.div>} />
               <Route path="/investors" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><InvestorsPage /></motion.div>} />
               <Route path="/profile/:userId" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><ProfilePage /></motion.div>} />
