@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
-import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download, AtSign } from 'lucide-react';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download, AtSign, Users } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +25,10 @@ export function ProfilePage() {
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
   const [connections, setConnections] = useState<any[]>([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followDocId, setFollowDocId] = useState<string | null>(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
@@ -68,7 +72,32 @@ export function ProfilePage() {
              setConnectionStatus(conn.data().status);
              setConnectionId(conn.id);
            }
+           
+           // Fetch follow status
+           const followQ = query(
+             collection(db, 'follows'),
+             where('followerId', '==', currentUser.uid),
+             where('followingId', '==', userId)
+           );
+           const followSnap = await getDocs(followQ);
+           if (!followSnap.empty) {
+             setIsFollowing(true);
+             setFollowDocId(followSnap.docs[0].id);
+           } else {
+             setIsFollowing(false);
+             setFollowDocId(null);
+           }
         }
+
+        // Count followers
+        const followersQ = query(collection(db, 'follows'), where('followingId', '==', userId));
+        const followersSnap = await getDocs(followersQ);
+        setFollowersCount(followersSnap.size);
+
+        // Count following
+        const followingQ = query(collection(db, 'follows'), where('followerId', '==', userId));
+        const followingSnap = await getDocs(followingQ);
+        setFollowingCount(followingSnap.size);
       } catch (err) {
         console.error("Error fetching profile", err);
       } finally {
@@ -149,6 +178,29 @@ export function ProfilePage() {
 
     fetchContracts();
   }, [userId, currentUser, userProfile?.role]);
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !userId) return;
+    try {
+      if (isFollowing && followDocId) {
+        await deleteDoc(doc(db, 'follows', followDocId));
+        setIsFollowing(false);
+        setFollowDocId(null);
+        setFollowersCount(prev => prev - 1);
+      } else {
+        const newDoc = await addDoc(collection(db, 'follows'), {
+          followerId: currentUser.uid,
+          followingId: userId,
+          createdAt: serverTimestamp()
+        });
+        setIsFollowing(true);
+        setFollowDocId(newDoc.id);
+        setFollowersCount(prev => prev + 1);
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, 'follows', auth);
+    }
+  };
 
   const handleConnect = async () => {
      if (!currentUser || !userId) return;
@@ -278,6 +330,22 @@ export function ProfilePage() {
           </button>
         ) : (
           <div className="flex gap-4">
+            <button
+               onClick={handleFollowToggle}
+               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${isFollowing ? 'bg-zinc-900 border border-white/20 text-white hover:bg-red-900 hover:text-white' : 'bg-[#E31837] text-white hover:bg-red-700'}`}
+            >
+               {isFollowing ? (
+                  <>
+                     <Users className="w-4 h-4" />
+                     Following
+                  </>
+               ) : (
+                  <>
+                     <UserPlus className="w-4 h-4" />
+                     Follow
+                  </>
+               )}
+            </button>
             <button 
               onClick={() => {
                 navigate('/app/feed', { 
@@ -324,6 +392,16 @@ export function ProfilePage() {
                  </div>
                </div>
                <h3 className="text-2xl font-black uppercase italic text-white mb-2 relative z-10">{profileData.displayName || 'Unnamed Combatant'}</h3>
+               <div className="flex gap-6 mb-4 relative z-10 text-white font-bold uppercase tracking-widest text-xs">
+                 <div className="flex flex-col items-center">
+                   <span className="text-xl font-black text-[#E31837]">{followersCount}</span>
+                   <span className="text-zinc-500 text-[10px]">Followers</span>
+                 </div>
+                 <div className="flex flex-col items-center">
+                   <span className="text-xl font-black text-white">{followingCount}</span>
+                   <span className="text-zinc-500 text-[10px]">Following</span>
+                 </div>
+               </div>
                <div className="flex flex-wrap justify-center gap-2 mt-2 relative z-10">
                   <div className="text-[10px] uppercase font-black tracking-widest text-[#E31837] bg-red-900/20 px-3 py-1.5 rounded-md border border-red-900/50">ROLE: {profileData.role}</div>
                </div>
@@ -466,9 +544,19 @@ export function ProfilePage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    {posts.map(post => (
                      <div key={post.id} className="bg-zinc-950 border border-white/5 p-4 rounded-2xl flex flex-col gap-4">
-                       {post.imageUrl && (
+                       {post.mediaUrl && (
                          <div className="aspect-video w-full rounded-xl overflow-hidden bg-black border border-white/5">
-                           <img src={post.imageUrl} alt="Combat tape" className="w-full h-full object-cover" />
+                           {post.mediaType === 'video' ? (
+                             <ReactPlayer 
+                               url={post.mediaUrl} 
+                               width="100%"
+                               height="100%"
+                               controls
+                               playsinline
+                             />
+                           ) : (
+                             <img src={post.mediaUrl} alt="Combat tape" className="w-full h-full object-cover" />
+                           )}
                          </div>
                        )}
                        <div>

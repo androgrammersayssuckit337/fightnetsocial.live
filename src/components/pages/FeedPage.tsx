@@ -14,7 +14,8 @@ import {
   serverTimestamp, 
   updateDoc, 
   increment as firestoreIncrement,
-  deleteField
+  deleteField,
+  where
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { uploadToS3 } from '../../utils/s3Client';
@@ -62,6 +63,8 @@ export function FeedPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [postCategory, setPostCategory] = useState<'highlight' | 'result' | 'matchup' | 'general'>('general');
   const [filterCategory, setFilterCategory] = useState<'all' | 'highlight' | 'result' | 'matchup'>('all');
+  const [feedType, setFeedType] = useState<'all' | 'following'>('all');
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   
   useEffect(() => {
     if (location.state?.prefillPost) {
@@ -78,6 +81,22 @@ export function FeedPage() {
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch following
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchFollowing = async () => {
+      try {
+        const q = query(collection(db, 'follows'), where('followerId', '==', currentUser.uid));
+        const userFollows = await getDocs(q);
+        const ids = userFollows.docs.map(d => d.data().followingId);
+        setFollowingIds(ids);
+      } catch (err) {
+        console.error("Failed to fetch follows", err);
+      }
+    };
+    fetchFollowing();
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -374,7 +393,17 @@ export function FeedPage() {
                transition={{ duration: 2, repeat: Infinity }}
                className="w-1.5 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.8)] rounded-full"
              ></motion.div>
-             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter group-hover:tracking-wider transition-all duration-500">Pro-Circuit Feed</h2>
+             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter group-hover:tracking-wider transition-all duration-500 hidden md:block">Pro-Circuit Feed</h2>
+             <div className="flex bg-zinc-900 border border-white/10 rounded-lg overflow-hidden md:ml-4">
+                <button
+                   onClick={() => setFeedType('all')}
+                   className={`px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-colors ${feedType === 'all' ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
+                >All</button>
+                <button
+                   onClick={() => setFeedType('following')}
+                   className={`px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-colors ${feedType === 'following' ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
+                >Following</button>
+             </div>
           </div>
           <motion.div 
             whileHover={{ rotate: 180, scale: 1.1 }}
@@ -497,7 +526,10 @@ export function FeedPage() {
 
         <div className="space-y-12">
           <AnimatePresence>
-          {posts.filter(p => filterCategory === 'all' || p.category === filterCategory).map(post => (
+          {posts
+             .filter(p => filterCategory === 'all' || p.category === filterCategory)
+             .filter(p => feedType === 'all' || followingIds.includes(p.authorId) || p.authorId === currentUser?.uid)
+             .map(post => (
             <motion.div 
               key={post.id} 
               initial={{ opacity: 0, y: 20 }}

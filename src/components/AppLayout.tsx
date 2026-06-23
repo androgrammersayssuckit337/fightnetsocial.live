@@ -119,7 +119,16 @@ export function AppLayout() {
               <p className="text-[11px] text-zinc-400 mb-2 uppercase tracking-wide">Pro Access</p>
               <p className="text-lg font-bold leading-none mb-1">$9.99/mo</p>
               <p className="text-[10px] text-zinc-500 mb-3">Unlock Agents & Scouting</p>
-              <button onClick={() => { upgradeToPro(); alert("Pro features unlocked for testing!"); }} className="w-full py-2 bg-[#E31837] text-white text-[11px] font-black uppercase tracking-tighter rounded hover:bg-red-700 transition">Go Pro Now</button>
+              <button 
+                onClick={() => {
+                  window.open("https://cash.app/$dfbreauxjr", "_blank");
+                  upgradeToPro(); 
+                  alert("Pro features unlocked! Also, check CashApp to complete payment."); 
+                }} 
+                className="w-full py-2 bg-[#E31837] text-white text-[11px] font-black uppercase tracking-tighter rounded hover:bg-red-700 transition"
+              >
+                Go Pro Now
+              </button>
             </div>
           )}
           

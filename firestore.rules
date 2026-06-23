@@ -185,6 +185,15 @@ service cloud.firestore {
                     incoming().role == existing().role;
     }
 
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().followerId == request.auth.uid &&
+                    incoming().keys().hasAll(['followerId', 'followingId', 'createdAt']) &&
+                    incoming().followerId is string && incoming().followingId is string &&
+                    (incoming().createdAt is timestamp || incoming().createdAt is number);
+      allow delete: if isSignedIn() && existing().followerId == request.auth.uid;
+    }
+
     match /posts/{postId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());

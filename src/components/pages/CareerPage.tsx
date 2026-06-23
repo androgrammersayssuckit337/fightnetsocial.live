@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, CheckCircle2, Circle, Calendar, Link as LinkIcon, Download, ListTodo, Share2 } from 'lucide-react';
+import { Target, Award, Zap, Edit2, Save, X, Camera, Loader2, Sparkles, Video, FileText, Plus, Trash2, Check, CheckCircle2, Circle, Calendar, Link as LinkIcon, Download, ListTodo, Share2, Upload } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../services/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
