@@ -4,7 +4,7 @@ import _ReactPlayer from 'react-player';
 const ReactPlayer = _ReactPlayer as any;
 import { doc, getDoc, collection, query, where, getDocs, orderBy, addDoc, updateDoc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
-import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download, AtSign, Users } from 'lucide-react';
+import { Award, Target, ExternalLink, Calendar, MapPin, Edit2, UserPlus, FileText, Check, Link as LinkIcon, Loader2, Instagram, Twitter, Youtube, Download, AtSign, Users, BadgeCheck, Trophy } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -196,6 +196,14 @@ export function ProfilePage() {
         setIsFollowing(true);
         setFollowDocId(newDoc.id);
         setFollowersCount(prev => prev + 1);
+
+        await addDoc(collection(db, 'users', userId, 'notifications'), {
+          type: 'follow',
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.displayName || 'Someone',
+          createdAt: serverTimestamp(),
+          read: false
+        });
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, 'follows', auth);
@@ -391,7 +399,12 @@ export function ProfilePage() {
                     <Award className="w-5 h-5" />
                  </div>
                </div>
-               <h3 className="text-2xl font-black uppercase italic text-white mb-2 relative z-10">{profileData.displayName || 'Unnamed Combatant'}</h3>
+               <div className="flex items-center gap-2 mb-2 relative z-10">
+                 <h3 className="text-2xl font-black uppercase italic text-white">{profileData.displayName || 'Unnamed Combatant'}</h3>
+                 {profileData.verified && (
+                   <BadgeCheck className="w-6 h-6 text-[#E31837]" />
+                 )}
+               </div>
                <div className="flex gap-6 mb-4 relative z-10 text-white font-bold uppercase tracking-widest text-xs">
                  <div className="flex flex-col items-center">
                    <span className="text-xl font-black text-[#E31837]">{followersCount}</span>
@@ -404,6 +417,12 @@ export function ProfilePage() {
                </div>
                <div className="flex flex-wrap justify-center gap-2 mt-2 relative z-10">
                   <div className="text-[10px] uppercase font-black tracking-widest text-[#E31837] bg-red-900/20 px-3 py-1.5 rounded-md border border-red-900/50">ROLE: {profileData.role}</div>
+                  {profileData.badges && profileData.badges.map((badge, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/20">
+                      <Trophy className="w-3 h-3" />
+                      {badge}
+                    </div>
+                  ))}
                </div>
             </div>
 

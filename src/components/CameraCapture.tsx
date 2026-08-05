@@ -19,9 +19,27 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: { ideal: 1024 }, height: { ideal: 1024 } } 
-      });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API is not supported in this browser environment.");
+      }
+
+      let mediaStream: MediaStream | null = null;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'user', width: { ideal: 1024 }, height: { ideal: 1024 } } 
+        });
+      } catch (e1) {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'user' } 
+          });
+        } catch (e2) {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ 
+            video: true 
+          });
+        }
+      }
+
       setStream(mediaStream);
       setError(null);
       if (videoRef.current) {
@@ -29,7 +47,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
       }
     } catch (err: any) {
       console.error("Camera access error:", err);
-      setError("Unable to access camera. Please check permissions or use image upload.");
+      setError("Unable to start video source. Please ensure camera permissions are granted or upload an image file directly.");
     }
   }, [stream]);
 
@@ -91,7 +109,30 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
 
          <div className="relative aspect-square w-full bg-black flex items-center justify-center overflow-hidden">
            {error ? (
-             <div className="text-zinc-500 text-xs text-center p-6 italic">{error}</div>
+             <div className="text-zinc-400 text-xs text-center p-6 flex flex-col items-center gap-4">
+               <p className="leading-relaxed">{error}</p>
+               <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
+                 <button 
+                   onClick={() => startCamera()} 
+                   className="flex-1 py-2 px-3 rounded-lg bg-zinc-900 border border-white/10 text-white text-xs font-bold uppercase hover:bg-zinc-800 transition-colors"
+                 >
+                   Retry Camera
+                 </button>
+                 <label className="flex-1 py-2 px-3 rounded-lg bg-[#E31837] text-white text-xs font-bold uppercase hover:bg-red-600 transition-colors cursor-pointer text-center">
+                   Upload Image
+                   <input 
+                     type="file" 
+                     accept="image/*" 
+                     className="hidden" 
+                     onChange={(e) => {
+                       if (e.target.files?.[0]) {
+                         onCapture(e.target.files[0]);
+                       }
+                     }} 
+                   />
+                 </label>
+               </div>
+             </div>
            ) : capturedDataUrl ? (
              <img src={capturedDataUrl} alt="Captured" className="w-full h-full object-cover" />
            ) : (

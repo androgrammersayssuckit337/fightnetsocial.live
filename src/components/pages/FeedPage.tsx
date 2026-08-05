@@ -15,15 +15,19 @@ import {
   updateDoc, 
   increment as firestoreIncrement,
   deleteField,
-  where
+  where,
+  arrayUnion,
+  arrayRemove,
+  deleteDoc
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X, Swords, Zap, Filter, Send } from 'lucide-react';
+import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X, Swords, Zap, Filter, Send, Video, BadgeCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import _ReactPlayer from 'react-player';
+import { VideoRecorder } from '../VideoRecorder';
 const ReactPlayer = _ReactPlayer as any;
 
 interface Post {
@@ -34,6 +38,7 @@ interface Post {
   mediaUrl?: string;
   mediaType?: 'video' | 'image';
   likesCount: number;
+  likedBy?: string[];
   commentsCount?: number;
   createdAt: number;
   authorName?: string;
@@ -41,6 +46,8 @@ interface Post {
   authorRole?: string;
   authorRecord?: string;
   authorGym?: string;
+  authorVerified?: boolean;
+  authorBadges?: string[];
   reactions?: Record<string, string>;
 }
 
@@ -51,6 +58,7 @@ interface Comment {
   createdAt: number;
   authorName?: string;
   authorImage?: string;
+  authorVerified?: boolean;
 }
 
 const EMOJI_OPTIONS = ['🔥', '🥊', '💯', '💪', '🧊'];
@@ -61,9 +69,6 @@ export function FeedPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [postCategory, setPostCategory] = useState<'highlight' | 'result' | 'matchup' | 'general'>('general');
-  const [filterCategory, setFilterCategory] = useState<'all' | 'highlight' | 'result' | 'matchup'>('all');
-  const [feedType, setFeedType] = useState<'all' | 'following'>('all');
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   
   useEffect(() => {
@@ -80,6 +85,7 @@ export function FeedPage() {
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch following
@@ -91,8 +97,11 @@ export function FeedPage() {
         const userFollows = await getDocs(q);
         const ids = userFollows.docs.map(d => d.data().followingId);
         setFollowingIds(ids);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to fetch follows", err);
+        if (err.code !== 'permission-denied') {
+          handleFirestoreError(err, OperationType.LIST, 'follows', auth);
+        }
       }
     };
     fetchFollowing();
@@ -123,7 +132,9 @@ export function FeedPage() {
                authorImage: userData.profileImageUrl,
                authorRole: userData.role,
                authorRecord: userData.record,
-               authorGym: userData.gym
+               authorGym: userData.gym,
+               authorVerified: userData.verified,
+               authorBadges: userData.badges
              };
            }
          } catch(e) { console.error('Failed to fetch author', e) }
@@ -229,9 +240,10 @@ export function FeedPage() {
       await addDoc(collection(db, 'posts'), {
         authorId: currentUser.uid,
         content: newPostContent.trim(),
-        category: postCategory,
+        category: 'general',
         createdAt: serverTimestamp(),
         likesCount: 0,
+        likedBy: [],
         commentsCount: 0,
         reactions: {},
         mediaUrl,
@@ -240,7 +252,6 @@ export function FeedPage() {
       
       setNewPostContent('');
       setSelectedFile(null);
-      setPostCategory('general');
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploadProgress(0);
     } catch (error) {
@@ -284,6 +295,7 @@ export function FeedPage() {
         const data = docSnap.data();
         let authorName = 'Unknown User';
         let authorImage = '';
+        let authorVerified = false;
         if (data.authorId) {
           try {
             const userSnap = await getDoc(doc(db, 'users', data.authorId));
@@ -291,6 +303,7 @@ export function FeedPage() {
               const userData = userSnap.data();
               authorName = userData.displayName || 'Unknown User';
               authorImage = userData.profileImageUrl || '';
+              authorVerified = userData.verified || false;
             }
           } catch (e) {
             console.error('Failed to fetch user for comment:', e);
@@ -301,6 +314,7 @@ export function FeedPage() {
           ...data,
           authorName,
           authorImage,
+          authorVerified,
         } as Comment;
       }));
       setComments(prev => ({ ...prev, [postId]: commentsData }));
@@ -341,12 +355,46 @@ export function FeedPage() {
     }
   };
 
-  const handleLike = async (postId: string) => {
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!currentUser) return;
     try {
+      const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+      const docSnap = await getDoc(commentRef);
+      if (!docSnap.exists() || docSnap.data().authorId !== currentUser.uid) return;
+      
+      await deleteDoc(commentRef);
       const postRef = doc(db, 'posts', postId);
       await updateDoc(postRef, {
-        likesCount: firestoreIncrement(1)
+        commentsCount: firestoreIncrement(-1)
       });
+      fetchComments(postId);
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    if (!currentUser) return;
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+      const isLiked = post.likedBy?.includes(currentUser.uid);
+      
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        likesCount: firestoreIncrement(isLiked ? -1 : 1),
+        likedBy: isLiked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
+      });
+
+      if (!isLiked && post.authorId !== currentUser.uid) {
+        await addDoc(collection(db, 'users', post.authorId, 'notifications'), {
+          type: 'like',
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.displayName || 'Someone',
+          createdAt: serverTimestamp(),
+          read: false
+        });
+      }
     } catch (error) {
       console.error("Like failed:", error);
     }
@@ -355,11 +403,22 @@ export function FeedPage() {
   const handleReaction = async (postId: string, emoji: string) => {
     if (!currentUser) return;
     try {
+      const post = posts.find(p => p.id === postId);
       const postRef = doc(db, 'posts', postId);
       await updateDoc(postRef, {
         [`reactions.${currentUser.uid}`]: emoji
       });
       setOpenReactionPostId(null);
+
+      if (post && post.authorId !== currentUser.uid && post.reactions?.[currentUser.uid] !== emoji) {
+        await addDoc(collection(db, 'users', post.authorId, 'notifications'), {
+          type: 'like',
+          fromUserId: currentUser.uid,
+          fromUserName: userProfile?.displayName || 'Someone',
+          createdAt: serverTimestamp(),
+          read: false
+        });
+      }
     } catch (error) {
       console.error("Reaction failed:", error);
       handleFirestoreError(error, OperationType.UPDATE, 'posts', auth);
@@ -384,26 +443,17 @@ export function FeedPage() {
       <motion.section 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="flex-1 border-r border-white/5 p-4 md:p-8 space-y-8 overflow-y-auto scrollbar-hide"
+        className="flex-1 p-4 md:p-8 overflow-y-auto scrollbar-hide"
       >
-        <div className="flex items-center justify-between mb-2 group cursor-default">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <div className="flex items-center justify-between mb-2 group cursor-default">
           <div className="flex items-center gap-3">
              <motion.div 
                animate={{ height: [32, 40, 32] }}
                transition={{ duration: 2, repeat: Infinity }}
                className="w-1.5 bg-[#E31837] italic shadow-[0_0_15px_rgba(227,24,55,0.8)] rounded-full"
              ></motion.div>
-             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter group-hover:tracking-wider transition-all duration-500 hidden md:block">Pro-Circuit Feed</h2>
-             <div className="flex bg-zinc-900 border border-white/10 rounded-lg overflow-hidden md:ml-4">
-                <button
-                   onClick={() => setFeedType('all')}
-                   className={`px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-colors ${feedType === 'all' ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
-                >All</button>
-                <button
-                   onClick={() => setFeedType('following')}
-                   className={`px-4 py-1.5 text-xs font-black uppercase tracking-widest transition-colors ${feedType === 'following' ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
-                >Following</button>
-             </div>
+             <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter group-hover:tracking-wider transition-all duration-500 hidden md:block">Global Feed</h2>
           </div>
           <motion.div 
             whileHover={{ rotate: 180, scale: 1.1 }}
@@ -426,6 +476,25 @@ export function FeedPage() {
                   className="w-full bg-transparent text-lg font-medium text-white placeholder-zinc-700 underline-offset-8 decoration-[#E31837]/20 focus:outline-none resize-none mb-4 min-h-[100px]"
                 />
                 
+                <AnimatePresence>
+                  {showVideoRecorder && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mb-4"
+                    >
+                      <VideoRecorder 
+                        onVideoRecorded={(file) => {
+                          setSelectedFile(file);
+                          setShowVideoRecorder(false);
+                        }}
+                        onCancel={() => setShowVideoRecorder(false)}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {uploadProgress > 0 && (
                    <div className="w-full mb-4">
                      <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-[#E31837] mb-2">
@@ -447,6 +516,14 @@ export function FeedPage() {
                       >
                         <Camera className="w-4 h-4" />
                         <span>Add Tape / Snap</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowVideoRecorder(!showVideoRecorder)}
+                        className={`text-[10px] font-black uppercase flex items-center gap-2 transition-all group/btn ${showVideoRecorder ? 'text-[#E31837]' : 'text-zinc-500 hover:text-[#E31837]'}`}
+                      >
+                        <Video className="w-4 h-4" />
+                        <span>Record Clip</span>
                       </button>
                       <input 
                         type="file" 
@@ -478,30 +555,17 @@ export function FeedPage() {
                            </button>
                         </div>
                       )}
-                      <div className="flex gap-2">
-                        {['general', 'highlight', 'result', 'matchup'].map(cat => (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setPostCategory(cat as any)}
-                            className={`px-3 py-1 text-[10px] uppercase font-black tracking-widest rounded-full transition-colors ${postCategory === cat ? 'bg-[#E31837] text-white' : 'bg-transparent text-zinc-500 hover:text-white border border-white/10 hover:bg-white/5'}`}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
                    </div>
                    <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     type="submit" 
                     disabled={isSubmitting || (!newPostContent.trim() && !selectedFile)}
-                    className="flex items-center gap-2 bg-[#E31837] text-white px-8 py-2.5 font-black uppercase italic tracking-tighter rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all shadow-lg shadow-red-900/20"
+                    className="flex items-center gap-2 bg-white text-black px-6 py-2 text-sm font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 disabled:opacity-50 transition-all shadow-xl font-sans"
                    >
-                     {isSubmitting ? 'Locking in...' : (
+                     {isSubmitting ? 'Posting...' : (
                        <>
-                         <span>POST</span>
-                         <Send className="w-4 h-4 ml-1" />
+                         <span>Share Post</span>
                        </>
                      )}
                    </motion.button>
@@ -510,25 +574,9 @@ export function FeedPage() {
             </div>
           </form>
 
-        <div className="flex items-center gap-2 md:gap-4 border-b border-white/10 pb-4 overflow-x-auto scrollbar-hide">
-           <Filter className="w-4 h-4 text-zinc-500 shrink-0" />
-           {[{id: 'all', label: 'All'}, {id: 'highlight', label: 'Highlights', icon: Zap}, {id: 'result', label: 'Results', icon: Trophy}, {id: 'matchup', label: 'Matchups', icon: Swords}].map(filter => (
-             <button
-               key={filter.id}
-               onClick={() => setFilterCategory(filter.id as any)}
-               className={`flex items-center shrink-0 gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${filterCategory === filter.id ? 'bg-[#E31837] text-white' : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10'}`}
-             >
-               {filter.icon && <filter.icon className="w-4 h-4" />}
-               {filter.label}
-             </button>
-           ))}
-        </div>
-
-        <div className="space-y-12">
+        <div className="space-y-12 mt-8">
           <AnimatePresence>
           {posts
-             .filter(p => filterCategory === 'all' || p.category === filterCategory)
-             .filter(p => feedType === 'all' || followingIds.includes(p.authorId) || p.authorId === currentUser?.uid)
              .map(post => (
             <motion.div 
               key={post.id} 
@@ -558,17 +606,15 @@ export function FeedPage() {
                    <div>
                      <div className="flex items-center gap-2">
                         <Link to={`/app/profile/${post.authorId}`} className="font-black text-white text-base tracking-tight uppercase italic hover:text-[#E31837] transition-colors">{post.authorName}</Link>
+                        {post.authorVerified && (
+                          <BadgeCheck className="w-4 h-4 text-[#E31837]" />
+                        )}
                         {post.authorRole === 'fighter' && post.authorRecord && (
                           <span className="text-[10px] bg-red-900/20 text-[#E31837] px-1.5 py-0.5 font-black rounded uppercase">{post.authorRecord}</span>
                         )}
                      </div>
                      <div className="flex items-center gap-3 mt-0.5">
                         <span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">{formatDistanceToNow(post.createdAt)} ago</span>
-                        {post.category && post.category !== 'general' && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded border border-white/10 uppercase font-black text-zinc-400 bg-zinc-900">
-                            {post.category}
-                          </span>
-                        )}
                         {post.authorGym && (
                           <span className="flex items-center gap-1 text-[10px] text-zinc-700 font-bold uppercase">
                             <MapPin className="w-2.5 h-2.5" />
@@ -576,6 +622,16 @@ export function FeedPage() {
                           </span>
                         )}
                      </div>
+                     {post.authorBadges && post.authorBadges.length > 0 && (
+                       <div className="flex items-center gap-1.5 mt-1">
+                         {post.authorBadges.map((badge, idx) => (
+                           <div key={idx} className="flex items-center gap-1 text-[9px] uppercase font-black tracking-widest text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                             <Trophy className="w-2.5 h-2.5" />
+                             {badge}
+                           </div>
+                         ))}
+                       </div>
+                     )}
                    </div>
                  </div>
                  <button onClick={() => handleShare(post.id)} className="text-zinc-800 hover:text-white transition-colors">
@@ -686,9 +742,9 @@ export function FeedPage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleLike(post.id)}
-                    className="flex items-center gap-2.5 text-zinc-500 hover:text-[#E31837] transition-all group/stat relative"
+                    className={`flex items-center gap-2.5 transition-all group/stat relative ${post.likedBy?.includes(currentUser?.uid || '') ? 'text-[#E31837]' : 'text-zinc-500 hover:text-[#E31837]'}`}
                    >
-                     <Heart className={`w-5 h-5 ${post.likesCount > 0 ? 'fill-[#E31837] text-[#E31837]' : ''} transition-transform`} />
+                     <Heart className={`w-5 h-5 ${post.likedBy?.includes(currentUser?.uid || '') ? 'fill-[#E31837]' : ''} transition-transform`} />
                      <span className="text-xs font-black tracking-tighter">{post.likesCount || ''} {post.likesCount === 1 ? 'Like' : 'Likes'}</span>
                    </motion.button>
                    <motion.button 
@@ -744,14 +800,25 @@ export function FeedPage() {
                         </Link>
                         <div className="flex-1">
                           <div className="bg-zinc-900/50 rounded-2xl rounded-tl-sm px-4 py-2 inline-block max-w-full border border-white/5">
-                            <Link to={`/app/profile/${comment.authorId}`} className="font-bold text-xs text-white hover:underline mr-2">
+                            <Link to={`/app/profile/${comment.authorId}`} className="font-bold text-xs text-white hover:underline mr-2 flex items-center gap-1">
                               {comment.authorName}
+                              {comment.authorVerified && <BadgeCheck className="w-3 h-3 text-[#E31837]" />}
                             </Link>
                             <p className="text-sm text-zinc-300 break-words whitespace-pre-wrap">{comment.text}</p>
                           </div>
-                          <p className="text-[10px] text-zinc-600 mt-1 ml-2">
-                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
-                          </p>
+                          <div className="flex items-center gap-3 mt-1 ml-2">
+                            <p className="text-[10px] text-zinc-600">
+                              {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'Just now'}
+                            </p>
+                            {currentUser?.uid === comment.authorId && (
+                              <button 
+                                onClick={() => handleDeleteComment(post.id, comment.id)}
+                                className="text-[10px] text-zinc-500 hover:text-[#E31837] font-bold transition-colors uppercase"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -785,89 +852,8 @@ export function FeedPage() {
             <p className="text-sm font-black italic mt-2 text-white uppercase tracking-tight">Marcus 'Apex' Chen signs with Agent X Pro</p>
           </div>
         </div>
+        </div>
         </motion.section>
-
-      {/* Side Profile/Navigator - Desktop only */}
-      <aside className="w-80 flex-col p-8 space-y-10 bg-[#0c0c0c] hidden lg:flex shrink-0 overflow-y-auto border-l border-white/5 scrollbar-hide">
-        {userProfile && (
-          <div className="relative group">
-             <div className="absolute -inset-1 bg-gradient-to-r from-[#E31837] to-red-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-             <div className="relative bg-zinc-900 border border-white/10 p-6 rounded-2xl">
-                <div className="flex items-center gap-5 mb-6">
-                   <img 
-                     src={userProfile.profileImageUrl || `https://ui-avatars.com/api/?name=${userProfile.displayName}&background=000&color=fff`} 
-                     className="w-16 h-16 rounded-full border-2 border-[#E31837] object-cover shadow-xl shadow-red-900/20" 
-                     alt="" 
-                   />
-                   <div className="overflow-hidden">
-                      <h3 className="text-base font-black uppercase italic text-white truncate leading-tight tracking-tighter">{userProfile.displayName}</h3>
-                      <p className="text-[10px] text-[#E31837] font-black uppercase tracking-widest mt-0.5">{userProfile.role}</p>
-                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                   <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Record</p>
-                      <p className="text-sm font-black text-white italic">{userProfile.record || '--'}</p>
-                   </div>
-                   <div className="bg-black/40 p-3 rounded-xl border border-white/5">
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Status</p>
-                      <p className="text-xs font-black text-green-500 uppercase">Active</p>
-                   </div>
-                </div>
-
-                <Link to="/app/career" className="block w-full py-3 bg-white text-black text-[10px] font-black uppercase tracking-widest text-center rounded-xl hover:bg-zinc-200 transition-all shadow-xl">
-                  Refine Persona
-                </Link>
-             </div>
-          </div>
-        )}
-
-        <div>
-          <h3 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-6 flex items-center gap-2">
-            <span className="w-6 h-px bg-zinc-800"></span>
-            Career Mastery
-          </h3>
-          <div className="space-y-6">
-            {[
-              { label: 'AMATEUR CIRCUIT', progress: 100, status: 'COMPLETED', color: 'bg-zinc-500' },
-              { label: 'SEMI-PRO ROSTER', progress: 45, status: 'IN PROGRESS', color: 'bg-[#E31837]' },
-              { label: 'PRO LEGACY', progress: 0, status: 'LOCKED', color: 'bg-zinc-800', locked: true }
-            ].map((tier, i) => (
-              <div key={i} className={`relative ${tier.locked ? 'opacity-20' : ''}`}>
-                 <div className="flex justify-between items-end mb-2">
-                    <span className="text-[11px] font-black italic text-white tracking-tighter uppercase">{tier.label}</span>
-                    <span className={`text-[9px] font-black ${tier.status === 'COMPLETED' ? 'text-zinc-500' : 'text-[#E31837]'} uppercase tracking-widest`}>{tier.status}</span>
-                 </div>
-                 <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/5">
-                    <div className={`h-full ${tier.color} transition-all duration-1000`} style={{ width: `${tier.progress}%` }}></div>
-                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-4">
-          <h3 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-6 flex items-center gap-2">
-             <span className="w-6 h-px bg-zinc-800"></span>
-             Combat Map
-          </h3>
-          <div className="space-y-4">
-             {[
-               { event: 'UFC 305: Pantoja vs Erceg', loc: 'Perth, Australia', date: '05.04' },
-               { event: 'PFL 4: Regular Season', loc: 'Uncasville, CT', date: '06.13' }
-             ].map((evt, i) => (
-               <div key={i} className="flex items-center justify-between p-4 bg-zinc-900/30 border border-white/5 rounded-2xl hover:border-zinc-700 hover:bg-zinc-900/50 transition-all cursor-pointer group/item">
-                  <div>
-                    <p className="text-xs font-black text-white italic group-hover/item:text-[#E31837] transition-colors">{evt.event}</p>
-                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mt-0.5">{evt.loc}</p>
-                  </div>
-                  <span className="text-[10px] font-mono text-zinc-500 group-hover/item:text-white transition-colors">{evt.date}</span>
-               </div>
-             ))}
-          </div>
-        </div>
-      </aside>
     </div>
   );
 }

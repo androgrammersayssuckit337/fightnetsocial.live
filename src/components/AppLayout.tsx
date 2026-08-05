@@ -14,6 +14,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { NetworkPage } from './pages/NetworkPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { InvestorsPage } from './pages/InvestorsPage';
+import { NotificationsDropdown } from './NotificationsDropdown';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -168,6 +169,9 @@ export function AppLayout() {
                 </Link>
               </motion.div>
             )}
+            
+            <NotificationsDropdown />
+            
             <motion.div whileHover={{ rotate: 90 }} transition={{ type: "spring", stiffness: 200, damping: 10 }}>
               <Link to="/app/settings" className="p-2 text-zinc-500 hover:text-white transition-colors block md:hidden bg-zinc-900/50 rounded-full border border-white/5">
                 <Settings className="w-5 h-5" />

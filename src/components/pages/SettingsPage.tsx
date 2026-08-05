@@ -10,7 +10,7 @@ import { motion } from 'motion/react';
 import { CameraCapture } from '../CameraCapture';
 
 export function SettingsPage() {
-  const { logout } = useAuth();
+  const { logout, userProfile } = useAuth();
   const navigate = useNavigate();
   
   // Basic mock states for settings
@@ -229,6 +229,66 @@ export function SettingsPage() {
               >
                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${allowLocation ? 'left-7' : 'left-1'}`}></div>
               </button>
+            </div>
+          </section>
+
+          {/* Professional Identity */}
+          <section className="bg-zinc-950 border border-white/5 rounded-2xl p-6 space-y-6">
+            <h2 className="text-xs font-black uppercase text-zinc-500 tracking-widest mb-2">Professional Identity</h2>
+            
+            <div className="flex items-center justify-between border-b border-white/5 pb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Verified Status</p>
+                  <p className="text-xs text-zinc-500">Display verification badge on profile</p>
+                </div>
+              </div>
+              <button 
+                onClick={async () => {
+                  if (!auth.currentUser) return;
+                  const newStatus = !(userProfile as any)?.verified;
+                  await updateDoc(doc(db, 'users', auth.currentUser.uid), { verified: newStatus });
+                  window.location.reload();
+                }}
+                className={`w-12 h-6 rounded-full relative transition-colors ${(userProfile as any)?.verified ? 'bg-[#E31837]' : 'bg-zinc-700'}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-transform ${(userProfile as any)?.verified ? 'left-7' : 'left-1'}`}></div>
+              </button>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-4">
+               <div>
+                  <p className="text-sm font-bold text-white mb-1">Professional Badges</p>
+                  <p className="text-xs text-zinc-500 mb-4">Add or remove achievements</p>
+               </div>
+               
+               <div className="flex flex-wrap gap-2">
+                 {['Pro Fighter', 'Tournament Winner', 'BJJ Black Belt', 'Coach', 'Veteran'].map(badge => {
+                   const hasBadge = (userProfile as any)?.badges?.includes(badge);
+                   return (
+                     <button
+                       key={badge}
+                       onClick={async () => {
+                         if (!auth.currentUser) return;
+                         let newBadges = (userProfile as any)?.badges || [];
+                         if (hasBadge) {
+                           newBadges = newBadges.filter((b: string) => b !== badge);
+                         } else {
+                           newBadges = [...newBadges, badge];
+                         }
+                         await updateDoc(doc(db, 'users', auth.currentUser.uid), { badges: newBadges });
+                         window.location.reload();
+                       }}
+                       className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${hasBadge ? 'bg-amber-500/20 border-amber-500 text-amber-500' : 'bg-transparent border-zinc-700 text-zinc-500 hover:border-zinc-500'}`}
+                     >
+                       {badge}
+                     </button>
+                   );
+                 })}
+               </div>
             </div>
           </section>
 

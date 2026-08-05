@@ -40,6 +40,7 @@ service cloud.firestore {
              (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 2500) &&
              (data.get('mediaType', '') in ['', 'video', 'image']) &&
              (data.get('likesCount', 0) is number) &&
+             (data.get('likedBy', []) is list) &&
              (data.get('commentsCount', 0) is number) &&
              (data.get('reactions', {}) is map);
     }
@@ -180,9 +181,21 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && (isOwner(userId) || isBot(userId)) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email', 'socialLinks']) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email', 'socialLinks', 'badges', 'verified']) &&
                     incoming().email == existing().email &&
                     incoming().role == existing().role;
+                    
+      match /notifications/{notificationId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && incoming().keys().hasAll(['type', 'fromUserId', 'createdAt']) &&
+                      incoming().type in ['message', 'like', 'follow'] &&
+                      incoming().fromUserId is string &&
+                      (incoming().createdAt is timestamp || incoming().createdAt is number);
+        allow update: if isSignedIn() && request.auth.uid == userId && 
+                      incoming().diff(existing()).affectedKeys().hasOnly(['read']) &&
+                      incoming().read is bool;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /follows/{followId} {
@@ -204,12 +217,12 @@ service cloud.firestore {
                         incoming().authorId == existing().authorId
                       ) ||
                       (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount']) &&
-                        incoming().likesCount == existing().get('likesCount', 0) + 1
+                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy']) &&
+                        (incoming().likesCount == existing().get('likesCount', 0) + 1 || incoming().likesCount == existing().get('likesCount', 0) - 1)
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount']) &&
-                        incoming().commentsCount == existing().get('commentsCount', 0) + 1
+                        (incoming().commentsCount == existing().get('commentsCount', 0) + 1 || incoming().commentsCount == existing().get('commentsCount', 0) - 1)
                       ) ||
                       (
                         incoming().diff(existing()).affectedKeys().hasOnly(['reactions']) &&
@@ -222,8 +235,8 @@ service cloud.firestore {
                         )
                       ) ||
                       (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'reactions']) &&
-                        incoming().likesCount == existing().get('likesCount', 0) + 1 &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy', 'reactions']) &&
+                        (incoming().likesCount == existing().get('likesCount', 0) + 1 || incoming().likesCount == existing().get('likesCount', 0) - 1) &&
                         (
                           incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) ||
                           (isSignedIn() && isBot(incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().toRulesList()[0]))

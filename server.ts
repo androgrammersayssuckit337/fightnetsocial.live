@@ -9,20 +9,29 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-const squareToken = process.env.SQUARE_ACCESS_TOKEN || "";
-const squareEnvStr = process.env.SQUARE_ENVIRONMENT?.toLowerCase();
+// Lazy initialization for Square Client
+let squareClientInstance: SquareClient | null = null;
 
-const environment = squareEnvStr === "sandbox" ? SquareEnvironment.Sandbox :
-                    squareEnvStr === "production" ? SquareEnvironment.Production :
-                    squareToken.startsWith("EAAAE") ? SquareEnvironment.Sandbox :
-                    squareToken.startsWith("sandbox-") ? SquareEnvironment.Sandbox :
-                    process.env.NODE_ENV === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox;
+function getSquareClient(): SquareClient {
+  if (!squareClientInstance) {
+    const squareToken = process.env.SQUARE_ACCESS_TOKEN;
+    if (!squareToken) {
+      throw new Error("SQUARE_ACCESS_TOKEN is missing in the server environment.");
+    }
+    const squareEnvStr = process.env.SQUARE_ENVIRONMENT?.toLowerCase();
+    const environment = squareEnvStr === "sandbox" ? SquareEnvironment.Sandbox :
+                        squareEnvStr === "production" ? SquareEnvironment.Production :
+                        squareToken.startsWith("EAAAE") ? SquareEnvironment.Sandbox :
+                        squareToken.startsWith("sandbox-") ? SquareEnvironment.Sandbox :
+                        process.env.NODE_ENV === "production" ? SquareEnvironment.Production : SquareEnvironment.Sandbox;
 
-// Initialize Square Client
-const squareClient = new SquareClient({
-  token: squareToken,
-  environment,
-});
+    squareClientInstance = new SquareClient({
+      token: squareToken,
+      environment,
+    });
+  }
+  return squareClientInstance;
+}
 
 // API Route for Square Checkout
 app.post("/api/subscribe", async (req, res) => {
@@ -38,8 +47,9 @@ app.post("/api/subscribe", async (req, res) => {
       return res.status(400).json({ error: "SQUARE_LOCATION_ID is missing in the server environment. Please configure it." });
     }
 
+    const client = getSquareClient();
     // Create a Square Checkout link
-    const response = await squareClient.checkout.paymentLinks.create({
+    const response = await client.checkout.paymentLinks.create({
       idempotencyKey: Date.now().toString(),
       order: {
         locationId: locationId,
@@ -223,5 +233,7 @@ async function startServer() {
 
 // Only start the server if not running mapped to a serverless function export
 if (!process.env.NETLIFY) {
-  startServer();
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Send } from 'lucide-react';
+import { Search, Edit, Send, BadgeCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db, auth } from '../../services/firebase';
 import { collection, query, where, getDocs, onSnapshot, orderBy, doc, getDoc, setDoc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -8,7 +8,7 @@ import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
 
 export function MessagesPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [chats, setChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -23,33 +23,27 @@ export function MessagesPage() {
     if (!currentUser) return;
 
     // Listen to connections that are accepted -> create chats if needed or just show them in search
-    const fetchChats = async () => {
-      try {
-        const q = query(collection(db, 'chats'), where('users', 'array-contains', currentUser.uid), orderBy('updatedAt', 'desc'));
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-          const chatListObj = await Promise.all(snapshot.docs.map(async d => {
-             const data = d.data();
-             const otherUserId = data.users.find((u: string) => u !== currentUser.uid);
-             let otherUser = { displayName: 'Unknown', profileImageUrl: '' };
-             if (otherUserId) {
-                const userDoc = await getDoc(doc(db, 'users', otherUserId));
-                if (userDoc.exists()) {
-                   otherUser = userDoc.data() as any;
-                }
-             }
-             return { id: d.id, ...data, otherUser, otherUserId };
-          }));
-          setChats(chatListObj);
-          setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.LIST, 'chats', auth);
-        });
-        return () => unsubscribe();
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchChats();
+    const q = query(collection(db, 'chats'), where('users', 'array-contains', currentUser.uid), orderBy('updatedAt', 'desc'));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const chatListObj = await Promise.all(snapshot.docs.map(async d => {
+         const data = d.data();
+         const otherUserId = data.users.find((u: string) => u !== currentUser.uid);
+         let otherUser = { displayName: 'Unknown', profileImageUrl: '' };
+         if (otherUserId) {
+            const userDoc = await getDoc(doc(db, 'users', otherUserId));
+            if (userDoc.exists()) {
+               otherUser = userDoc.data() as any;
+            }
+         }
+         return { id: d.id, ...data, otherUser, otherUserId };
+      }));
+      setChats(chatListObj);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'chats', auth);
+    });
+
+    return () => unsubscribe();
   }, [currentUser]);
 
   useEffect(() => {
@@ -130,6 +124,18 @@ export function MessagesPage() {
       await updateDoc(doc(db, 'chats', activeChat.id), {
         updatedAt: serverTimestamp()
       });
+
+      if (activeChat.otherUser?.id) {
+        // Find if we have user profile
+        const fromName = userProfile?.displayName || activeChat.authUser?.displayName || 'Someone';
+        await addDoc(collection(db, 'users', activeChat.otherUser.id, 'notifications'), {
+          type: 'message',
+          fromUserId: currentUser.uid,
+          fromUserName: fromName,
+          createdAt: serverTimestamp(),
+          read: false
+        });
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, `chats/${activeChat.id}/messages`, auth);
     }
@@ -189,8 +195,11 @@ export function MessagesPage() {
               <img src={chat.otherUser?.profileImageUrl || `https://ui-avatars.com/api/?name=${chat.otherUser?.displayName}&background=222&color=fff`} alt="" className="w-10 h-10 rounded-full border border-zinc-700 object-cover" />
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-1">
-                  <h3 className="font-bold text-sm tracking-tight truncate text-white uppercase">{chat.otherUser?.displayName}</h3>
-                  <span className="text-[10px] text-zinc-500 shrink-0 font-mono">
+                   <h3 className="font-bold text-sm tracking-tight truncate text-white uppercase flex items-center gap-1">
+                     {chat.otherUser?.displayName}
+                     {chat.otherUser?.verified && <BadgeCheck className="w-3 h-3 text-[#E31837] shrink-0" />}
+                   </h3>
+                   <span className="text-[10px] text-zinc-500 shrink-0 font-mono">
                      {chat.updatedAt?.seconds ? formatDistanceToNow(chat.updatedAt.seconds * 1000, { addSuffix: true }) : ''}
                   </span>
                 </div>
@@ -209,7 +218,10 @@ export function MessagesPage() {
                 <button className="md:hidden text-zinc-400 p-2" onClick={() => setActiveChat(null)}>←</button>
                 <img src={activeChat.otherUser?.profileImageUrl || `https://ui-avatars.com/api/?name=${activeChat.otherUser?.displayName}&background=222&color=fff`} className="w-8 h-8 rounded-full border border-zinc-700 object-cover" alt="" />
                 <div>
-                   <div className="text-sm font-black uppercase text-white tracking-widest">{activeChat.otherUser?.displayName}</div>
+                   <div className="text-sm font-black uppercase text-white tracking-widest flex items-center gap-1">
+                     {activeChat.otherUser?.displayName}
+                     {activeChat.otherUser?.verified && <BadgeCheck className="w-4 h-4 text-[#E31837]" />}
+                   </div>
                    <div className="text-[10px] text-[#E31837] uppercase font-bold tracking-widest">SECURE CHANNEL</div>
                 </div>
              </div>

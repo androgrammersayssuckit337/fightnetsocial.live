@@ -94,10 +94,23 @@ export function PromoGenerator({ isOpen, onClose, fighterName, initialPrompt }: 
 
     } catch (err: any) {
       console.error('Video generation error:', err);
-      if (err.message && err.message.includes('GEMINI_API_KEY missing')) {
+      let errorMessage = err.message || "An unexpected error occurred during video generation.";
+      if (errorMessage.includes('GEMINI_API_KEY missing')) {
         setError('Missing GEMINI_API_KEY. Please set your Gemini API key in the platform settings to use Veo.');
+      } else if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        setError("You have exceeded your Gemini API quota. Please check your Google Cloud billing or wait for the quota to reset.");
       } else {
-        setError(err.message || "An unexpected error occurred during video generation.");
+        // Strip out the bulky JSON if it's an ApiError
+        if (errorMessage.includes('ApiError:')) {
+           try {
+              const jsonPart = errorMessage.substring(errorMessage.indexOf('{'));
+              const parsed = JSON.parse(jsonPart);
+              if (parsed.error && parsed.error.message) {
+                 errorMessage = parsed.error.message;
+              }
+           } catch(e) {}
+        }
+        setError(errorMessage);
       }
     } finally {
       setIsGenerating(false);

@@ -22,6 +22,8 @@ interface UserProfile {
   gym: string;
   isPro: boolean;
   createdAt: number;
+  badges?: string[];
+  verified?: boolean;
   socialLinks?: {
     instagram?: string;
     twitter?: string;
