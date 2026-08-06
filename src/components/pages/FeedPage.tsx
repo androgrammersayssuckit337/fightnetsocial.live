@@ -24,10 +24,11 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { uploadToS3 } from '../../utils/s3Client';
 import { handleFirestoreError, OperationType } from '../../utils/error';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X, Swords, Zap, Filter, Send, Video, BadgeCheck } from 'lucide-react';
+import { Heart, MessageSquare, Share2, Play, Trophy, MapPin, ExternalLink, Camera, Shield, X, Swords, Zap, Filter, Send, Video, BadgeCheck, Image, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import _ReactPlayer from 'react-player';
 import { VideoRecorder } from '../VideoRecorder';
+import { CameraCapture } from '../CameraCapture';
 const ReactPlayer = _ReactPlayer as any;
 
 interface Post {
@@ -86,7 +87,10 @@ export function FeedPage() {
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch following
   useEffect(() => {
@@ -477,6 +481,22 @@ export function FeedPage() {
                 />
                 
                 <AnimatePresence>
+                  {showCameraCapture && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mb-4"
+                    >
+                      <CameraCapture 
+                        onCapture={(file) => {
+                          setSelectedFile(file);
+                          setShowCameraCapture(false);
+                        }}
+                        onCancel={() => setShowCameraCapture(false)}
+                      />
+                    </motion.div>
+                  )}
                   {showVideoRecorder && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -507,24 +527,75 @@ export function FeedPage() {
                    </div>
                 )}
 
-                <div className="flex justify-between items-center border-t border-white/5 pt-4">
-                   <div className="flex items-center gap-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-white/5 pt-4">
+                   <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                      {/* Photo upload button */}
                       <button 
                         type="button" 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-zinc-500 hover:text-[#E31837] text-[10px] font-black uppercase flex items-center gap-2 transition-all group/btn"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-900 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 transition-all"
                       >
-                        <Camera className="w-4 h-4" />
-                        <span>Add Tape / Snap</span>
+                        <Image className="w-4 h-4 text-emerald-400" />
+                        <span>Photo</span>
                       </button>
+
+                      {/* Video upload button */}
+                      <button 
+                        type="button" 
+                        onClick={() => videoInputRef.current?.click()}
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-900 px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 transition-all"
+                      >
+                        <Film className="w-4 h-4 text-purple-400" />
+                        <span>Video</span>
+                      </button>
+
+                      {/* Live camera snap button */}
+                      <button 
+                        type="button" 
+                        onClick={() => { setShowCameraCapture(!showCameraCapture); setShowVideoRecorder(false); }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 transition-all ${showCameraCapture ? 'bg-[#E31837] text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                      >
+                        <Camera className="w-4 h-4 text-amber-400" />
+                        <span>Snap</span>
+                      </button>
+
+                      {/* Record clip button */}
                       <button
                         type="button"
-                        onClick={() => setShowVideoRecorder(!showVideoRecorder)}
-                        className={`text-[10px] font-black uppercase flex items-center gap-2 transition-all group/btn ${showVideoRecorder ? 'text-[#E31837]' : 'text-zinc-500 hover:text-[#E31837]'}`}
+                        onClick={() => { setShowVideoRecorder(!showVideoRecorder); setShowCameraCapture(false); }}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 transition-all ${showVideoRecorder ? 'bg-[#E31837] text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
                       >
-                        <Video className="w-4 h-4" />
-                        <span>Record Clip</span>
+                        <Video className="w-4 h-4 text-red-500" />
+                        <span>Record</span>
                       </button>
+
+                      {/* Hidden image input */}
+                      <input 
+                        type="file" 
+                        ref={imageInputRef} 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            setSelectedFile(e.target.files[0]);
+                          }
+                        }}
+                      />
+
+                      {/* Hidden video input */}
+                      <input 
+                        type="file" 
+                        ref={videoInputRef} 
+                        className="hidden" 
+                        accept="video/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            setSelectedFile(e.target.files[0]);
+                          }
+                        }}
+                      />
+
+                      {/* General file input fallback */}
                       <input 
                         type="file" 
                         ref={fileInputRef} 
@@ -536,19 +607,26 @@ export function FeedPage() {
                           }
                         }}
                       />
+
                       {selectedFile && (
-                        <div className="relative inline-block mt-2">
+                        <div className="relative inline-block">
                            {selectedFile.type.startsWith('video') ? (
-                             <div className="relative w-20 h-20 bg-black rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
-                               <Play className="w-6 h-6 text-white absolute z-10" />
-                               <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover opacity-50" />
+                             <div className="relative w-16 h-16 bg-black rounded-lg overflow-hidden border border-white/20 flex items-center justify-center">
+                               <Play className="w-5 h-5 text-white absolute z-10" />
+                               <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover opacity-60" />
                              </div>
                            ) : (
-                             <img src={URL.createObjectURL(selectedFile)} alt="preview" className="w-20 h-20 object-cover rounded-lg border border-white/10" />
+                             <img src={URL.createObjectURL(selectedFile)} alt="preview" className="w-16 h-16 object-cover rounded-lg border border-white/20" />
                            )}
                            <button 
                              type="button" 
-                             onClick={(e) => { e.preventDefault(); setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ''; }}
+                             onClick={(e) => { 
+                               e.preventDefault(); 
+                               setSelectedFile(null); 
+                               if(fileInputRef.current) fileInputRef.current.value = '';
+                               if(imageInputRef.current) imageInputRef.current.value = '';
+                               if(videoInputRef.current) videoInputRef.current.value = '';
+                             }}
                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-500"
                            >
                              <X className="w-3 h-3" />
@@ -561,13 +639,9 @@ export function FeedPage() {
                     whileTap={{ scale: 0.95 }}
                     type="submit" 
                     disabled={isSubmitting || (!newPostContent.trim() && !selectedFile)}
-                    className="flex items-center gap-2 bg-white text-black px-6 py-2 text-sm font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 disabled:opacity-50 transition-all shadow-xl font-sans"
+                    className="flex items-center gap-2 bg-white text-black px-6 py-2 text-sm font-black uppercase tracking-widest rounded-full hover:bg-zinc-200 disabled:opacity-50 transition-all shadow-xl font-sans shrink-0 self-end sm:self-auto"
                    >
-                     {isSubmitting ? 'Posting...' : (
-                       <>
-                         <span>Share Post</span>
-                       </>
-                     )}
+                     {isSubmitting ? 'Posting...' : 'Share Post'}
                    </motion.button>
                 </div>
               </div>
