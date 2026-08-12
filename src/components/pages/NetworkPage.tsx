@@ -116,7 +116,7 @@ export function NetworkPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-8 bg-[#0a0a0a] min-h-full">
+    <div className="p-4 md:p-8 space-y-8 bg-transparent min-h-full">
       <header className="mb-8 border-b border-[#222] pb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black uppercase text-white tracking-tighter italic mb-1">Combat Directory</h1>

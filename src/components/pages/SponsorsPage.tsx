@@ -85,7 +85,7 @@ export function SponsorsPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-8 min-h-full bg-[#0a0a0a]">
+    <div className="p-4 md:p-8 space-y-8 min-h-full bg-transparent">
       <header className="mb-8 border-b border-[#222] pb-4">
         <h1 className="text-2xl font-black uppercase text-white tracking-tighter italic mb-1">Sponsor Advocate</h1>
         <p className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Connect with brands that believe in you</p>
@@ -124,7 +124,7 @@ export function SponsorsPage() {
                          value={pitch}
                          onChange={e => setPitch(e.target.value)}
                          placeholder="Short pitch..." 
-                         className="w-full bg-[#0a0a0a] border border-zinc-700 rounded p-2 text-xs text-white focus:outline-none focus:border-[#E31837]"
+                         className="w-full bg-transparent border border-zinc-700 rounded p-2 text-xs text-white focus:outline-none focus:border-[#E31837]"
                          rows={2}
                        />
                        <div className="flex gap-2">

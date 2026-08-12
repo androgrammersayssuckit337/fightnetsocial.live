@@ -144,7 +144,7 @@ export function MessagesPage() {
   return (
     <div className="flex bg-[#0c0c0c] border border-zinc-800 rounded-lg h-[calc(100vh-120px)] md:h-[calc(100vh-64px)] overflow-hidden m-4 md:m-6">
       {/* Chat List */}
-      <div className={`w-full md:w-80 border-r border-[#222] flex flex-col flex-shrink-0 bg-[#0a0a0a] ${activeChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full md:w-80 border-r border-[#222] flex flex-col flex-shrink-0 bg-transparent ${activeChat ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-[#222] flex items-center justify-between">
           <h2 className="text-lg font-black uppercase text-white tracking-tighter italic">Messages</h2>
           <button onClick={() => searchInputRef.current?.focus()} className="text-zinc-500 hover:text-white transition-colors"><Edit className="w-4 h-4" /></button>
@@ -157,7 +157,7 @@ export function MessagesPage() {
                placeholder="Search friends or suggested..." 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full bg-[#0a0a0a] border border-zinc-800 p-2 pl-8 text-xs text-white focus:outline-none focus:border-[#E31837] rounded"
+               className="w-full bg-transparent border border-zinc-800 p-2 pl-8 text-xs text-white focus:outline-none focus:border-[#E31837] rounded"
              />
              <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
           </div>
@@ -214,7 +214,7 @@ export function MessagesPage() {
       <div className={`flex-1 flex-col bg-[#050505] ${activeChat ? 'flex' : 'hidden md:flex'}`}>
          {activeChat ? (
            <>
-             <div className="p-4 border-b border-[#222] bg-[#0a0a0a] flex items-center gap-4">
+             <div className="p-4 border-b border-[#222] bg-transparent flex items-center gap-4">
                 <button className="md:hidden text-zinc-400 p-2" onClick={() => setActiveChat(null)}>←</button>
                 <img src={activeChat.otherUser?.profileImageUrl || `https://ui-avatars.com/api/?name=${activeChat.otherUser?.displayName}&background=222&color=fff`} className="w-8 h-8 rounded-full border border-zinc-700 object-cover" alt="" />
                 <div>
@@ -243,7 +243,7 @@ export function MessagesPage() {
                 <div ref={messagesEndRef} />
              </div>
 
-             <form onSubmit={sendMessage} className="p-4 border-t border-[#222] bg-[#0a0a0a] flex gap-2">
+             <form onSubmit={sendMessage} className="p-4 border-t border-[#222] bg-transparent flex gap-2">
                 <input 
                   type="text"
                   value={newMessage}

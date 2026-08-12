@@ -257,6 +257,8 @@ export function FeedPage() {
       setNewPostContent('');
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      if (videoInputRef.current) videoInputRef.current.value = '';
       setUploadProgress(0);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'posts', auth);
@@ -442,7 +444,7 @@ export function FeedPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-[#0a0a0a]">
+    <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-transparent">
       {/* Feed Section */}
       <motion.section 
         initial={{ opacity: 0 }}
@@ -658,7 +660,7 @@ export function FeedPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.4 }}
-              className="group relative bg-[#0a0a0a]"
+              className="group relative bg-transparent"
             >
               {/* Post Header */}
               <div className="flex items-start justify-between mb-4">

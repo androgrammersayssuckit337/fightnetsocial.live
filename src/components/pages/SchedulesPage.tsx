@@ -101,7 +101,7 @@ export function SchedulesPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-8 min-h-full bg-[#0a0a0a]">
+    <div className="p-4 md:p-8 space-y-8 min-h-full bg-transparent">
       <header className="mb-8 border-b border-[#222] pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black uppercase text-white tracking-tighter italic mb-1">Fight Schedules</h1>

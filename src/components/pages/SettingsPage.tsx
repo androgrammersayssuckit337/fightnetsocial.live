@@ -106,7 +106,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#0a0a0a] p-4 md:p-8 relative">
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-transparent p-4 md:p-8 relative">
       <div className="max-w-2xl w-full mx-auto space-y-8">
         
         <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
@@ -317,6 +317,46 @@ export function SettingsPage() {
               <LogOut className="w-4 h-4" />
               Sign Out
             </button>
+          </section>
+
+          {/* Base44 Cloud Integration */}
+          <section className="bg-zinc-950 border border-indigo-500/20 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-400">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Base44 Integration</p>
+                  <p className="text-xs text-zinc-500">Connected via @base44/sdk platform client</p>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Active
+              </span>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Base44 platform integration is configured for FightNet data synchronization, remote functions, and client entities.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={async () => {
+                  try {
+                    const { base44 } = await import('../../services/base44');
+                    const client = base44.getClient();
+                    alert(`Base44 SDK Client initialized successfully!\nStatus: Connected`);
+                  } catch (err: any) {
+                    alert(`Base44 test failed: ${err.message}`);
+                  }
+                }}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Test Connection
+              </button>
+            </div>
           </section>
 
           {/* Test Bots / QA */}

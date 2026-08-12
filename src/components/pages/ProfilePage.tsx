@@ -302,7 +302,7 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
+      <div className="flex h-full items-center justify-center bg-transparent">
         <div className="w-8 h-8 border-4 border-[#E31837] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -310,7 +310,7 @@ export function ProfilePage() {
 
   if (!profileData) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#0a0a0a] text-zinc-500 uppercase tracking-widest text-sm font-bold">
+      <div className="flex h-full items-center justify-center bg-transparent text-zinc-500 uppercase tracking-widest text-sm font-bold">
         Profile Not Found
       </div>
     );
@@ -319,7 +319,7 @@ export function ProfilePage() {
   const isOwnProfile = currentUser?.uid === userId;
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-12 bg-[#0a0a0a] min-h-full scrollbar-hide max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 lg:p-12 space-y-12 bg-transparent min-h-full scrollbar-hide max-w-7xl mx-auto">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
         <div className="flex items-center gap-4">
            <div className="w-2 h-12 bg-[#E31837] italic shadow-[0_0_20px_rgba(227,24,55,0.4)]"></div>
@@ -360,7 +360,7 @@ export function ProfilePage() {
                   state: { prefillPost: `@${profileData.displayName?.replace(/\s+/g, '') || profileData.email?.split('@')[0]} ` } 
                 });
               }}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-[#0a0a0a] text-[#E31837] border border-[#E31837] hover:bg-[#E31837] hover:text-white shadow-[0_0_15px_rgba(227,24,55,0.2)]"
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all bg-transparent text-[#E31837] border border-[#E31837] hover:bg-[#E31837] hover:text-white shadow-[0_0_15px_rgba(227,24,55,0.2)]"
             >
               <AtSign className="w-4 h-4" /> Tag in Post
             </button>

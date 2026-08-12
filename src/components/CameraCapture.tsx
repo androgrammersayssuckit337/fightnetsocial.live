@@ -102,7 +102,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
            <h3 className="text-white font-black uppercase text-sm tracking-widest flex items-center gap-2">
              <Camera className="w-4 h-4 text-[#E31837]" /> Camera Capture
            </h3>
-           <button onClick={onCancel} className="text-zinc-500 hover:text-white transition-colors p-1 bg-zinc-900 rounded-full">
+           <button type="button" onClick={onCancel} className="text-zinc-500 hover:text-white transition-colors p-1 bg-zinc-900 rounded-full">
              <X className="w-4 h-4" />
            </button>
          </div>
@@ -112,7 +112,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
              <div className="text-zinc-400 text-xs text-center p-6 flex flex-col items-center gap-4">
                <p className="leading-relaxed">{error}</p>
                <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
-                 <button 
+                 <button type="button" 
                    onClick={() => startCamera()} 
                    className="flex-1 py-2 px-3 rounded-lg bg-zinc-900 border border-white/10 text-white text-xs font-bold uppercase hover:bg-zinc-800 transition-colors"
                  >
@@ -150,7 +150,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
          <div className="p-6 flex items-center justify-center gap-4 border-t border-white/5 bg-zinc-900/50">
            {capturedDataUrl ? (
              <>
-               <motion.button 
+               <motion.button type="button" 
                  whileHover={{ scale: 1.05 }} 
                  whileTap={{ scale: 0.95 }}
                  onClick={handleRetake} 
@@ -158,7 +158,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
                >
                  <RefreshCw className="w-4 h-4" /> Retake
                </motion.button>
-               <motion.button 
+               <motion.button type="button" 
                  whileHover={{ scale: 1.05 }} 
                  whileTap={{ scale: 0.95 }}
                  onClick={handleApprove} 
@@ -168,7 +168,7 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
                </motion.button>
              </>
            ) : (
-             <motion.button 
+             <motion.button type="button" 
                 whileHover={{ scale: 1.05 }} 
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCapture}

@@ -31,7 +31,7 @@ service cloud.firestore {
              (data.get('socialLinks', {}) is map);
     }
 
-    function isValidPost(data) {
+        function isValidPost(data) {
       return data.keys().hasAll(['authorId', 'content', 'createdAt']) &&
              data.authorId is string && (data.authorId == request.auth.uid || isBot(data.authorId)) &&
              data.content is string && data.content.size() <= 2000 &&

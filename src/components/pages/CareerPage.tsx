@@ -492,7 +492,7 @@ export function CareerPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 space-y-12 bg-[#0a0a0a] min-h-full scrollbar-hide max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 lg:p-12 space-y-12 bg-transparent min-h-full scrollbar-hide max-w-7xl mx-auto">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
         <div className="flex items-center gap-4">
            <div className="w-2 h-12 bg-[#E31837] italic shadow-[0_0_20px_rgba(227,24,55,0.4)]"></div>

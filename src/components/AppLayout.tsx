@@ -26,6 +26,13 @@ export function AppLayout() {
   const { logout, userProfile, upgradeToPro } = useAuth();
   const location = useLocation();
 
+  const getBackgroundImage = (path: string) => {
+    const p = path.toLowerCase();
+    if (p === '/app' || p === '/app/') return 'url(https://images.unsplash.com/photo-1599058917212-97d15a51a8bb?auto=format&fit=crop&q=80&w=2000)'; // Octagon
+    if (p.includes('/network') || p.includes('/messages') || p.includes('/gyms') || p.includes('/investors')) return 'url(https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&q=80&w=2000)'; // Heavy bag
+    return 'url(https://images.unsplash.com/photo-1517838277536-f5f99a3819fb?auto=format&fit=crop&q=80&w=2000)'; // Speed bag / Gym
+  };
+
   const navItems = [
     { label: 'Main Feed', path: '/app', icon: Home },
     { label: 'Network', path: '/app/network', icon: Users },
@@ -122,13 +129,13 @@ export function AppLayout() {
               <p className="text-[10px] text-zinc-500 mb-3">Unlock Agents & Scouting</p>
               <button 
                 onClick={() => {
-                  window.open("https://cash.app/$dfbreauxjr", "_blank");
+                  // window.open("https://cash.app/$dfbreauxjr", "_blank");
                   upgradeToPro(); 
-                  alert("Pro features unlocked! Also, check CashApp to complete payment."); 
+                  alert("Demo Mode: Pro features unlocked!"); 
                 }} 
                 className="w-full py-2 bg-[#E31837] text-white text-[11px] font-black uppercase tracking-tighter rounded hover:bg-red-700 transition"
               >
-                Go Pro Now
+                Go Pro Now (Demo)
               </button>
             </div>
           )}
@@ -146,11 +153,17 @@ export function AppLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative bg-[#0a0a0a]">
+        <div 
+          className="absolute inset-0 z-0 opacity-15 bg-cover bg-center bg-no-repeat pointer-events-none transition-all duration-1000"
+          style={{ backgroundImage: getBackgroundImage(location.pathname), filter: 'grayscale(100%)' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent z-0 pointer-events-none" />
+        
         <motion.header 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="h-16 border-b border-[#222] flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-50 shadow-md"
+          className="h-16 border-b border-[#222] flex items-center justify-between px-4 md:px-8 shrink-0 bg-[#0a0a0a]/80 backdrop-blur-md sticky top-0 z-50 shadow-md relative"
         >
           <div className="flex items-center space-x-6 relative">
              <motion.div 
@@ -180,7 +193,7 @@ export function AppLayout() {
           </div>
         </motion.header>
 
-        <div className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto custom-scrollbar relative overflow-x-hidden">
+        <div className="flex-1 overflow-y-auto w-full max-w-7xl mx-auto custom-scrollbar relative z-10 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}><FeedPage /></motion.div>} />

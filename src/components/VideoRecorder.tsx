@@ -121,7 +121,7 @@ export function VideoRecorder({ onVideoRecorded, onCancel }: VideoRecorderProps)
       className="bg-black border border-[#E31837]/30 rounded-xl overflow-hidden relative"
     >
       <div className="absolute top-2 right-2 z-10 flex gap-2">
-        <button 
+        <button type="button" 
           onClick={() => { stopCamera(); onCancel(); }}
           className="bg-black/50 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-black/80 transition"
         >
@@ -134,7 +134,7 @@ export function VideoRecorder({ onVideoRecorded, onCancel }: VideoRecorderProps)
           <Camera className="w-12 h-12 text-zinc-600" />
           <p className="text-xs text-zinc-300 max-w-xs leading-relaxed">Camera or microphone access denied or unavailable on this device.</p>
           <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs mt-2">
-            <button 
+            <button type="button" 
               onClick={() => startCamera()} 
               className="flex-1 py-2 px-3 rounded-lg bg-zinc-900 border border-white/10 text-white text-xs font-bold uppercase hover:bg-zinc-800 transition-colors"
             >
@@ -167,14 +167,14 @@ export function VideoRecorder({ onVideoRecorded, onCancel }: VideoRecorderProps)
           
           <div className="absolute bottom-4 left-0 right-0 flex justify-center">
             {!isRecording ? (
-              <button 
+              <button type="button" 
                 onClick={startRecording}
                 className="w-14 h-14 bg-[#E31837] rounded-full flex items-center justify-center border-4 border-white hover:scale-110 transition-transform shadow-xl shadow-red-900/50"
               >
                 <Video className="w-6 h-6 text-white" />
               </button>
             ) : (
-              <button 
+              <button type="button" 
                 onClick={stopRecording}
                 className="w-14 h-14 bg-white rounded-full flex items-center justify-center border-4 border-[#E31837] hover:scale-110 transition-transform animate-pulse"
               >
