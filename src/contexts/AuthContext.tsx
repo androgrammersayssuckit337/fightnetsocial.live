@@ -7,7 +7,8 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  browserPopupRedirectResolver
 } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
@@ -132,12 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async (role: 'fighter' | 'fan' | 'sponsor' = 'fan') => {
     const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/calendar');
-    provider.addScope('https://www.googleapis.com/auth/chat');
-    provider.addScope('https://www.googleapis.com/auth/forms');
+    provider.setCustomParameters({ prompt: 'select_account' });
     
     try {
-      const result = await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         setGoogleAccessToken(credential.accessToken);
@@ -146,6 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
         throw new Error('LOGIN_CANCELLED');
+      }
+      if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error: Please ensure third-party cookies are enabled in your browser, or try disabling your adblocker.');
       }
       console.error("Login failed:", error);
       throw error;

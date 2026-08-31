@@ -36,7 +36,9 @@ export function LandingPage() {
       setIsLoading(true);
       await loginWithGoogle();
     } catch (err: any) {
-      setError(err.message || 'Google sign in failed');
+      if (err.message !== 'LOGIN_CANCELLED') {
+        setError(err.message || 'Google sign in failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +127,7 @@ export function LandingPage() {
 
         <div className="mt-6">
           <button 
+            type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
             className="w-full bg-white text-black font-black uppercase tracking-widest py-3 rounded-lg hover:bg-zinc-200 transition flex justify-center items-center gap-2"

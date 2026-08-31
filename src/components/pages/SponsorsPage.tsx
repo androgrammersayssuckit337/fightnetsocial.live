@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { db, auth } from '../../services/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../../utils/error';
+import { base44 } from '../../services/base44';
 
 const MOCK_SPONSORS = [
   { 
@@ -76,6 +77,16 @@ export function SponsorsPage() {
         pitch,
         createdAt: serverTimestamp()
       });
+
+      // Sync via Base44 API
+      await base44.entities.create('sponsorshipApplications', {
+        fighterId: currentUser.uid,
+        sponsorId,
+        status: 'pending',
+        pitch
+      });
+      base44.telemetry.log('sponsorship_pitched', currentUser.uid, { sponsorId });
+
       setApplyingTo(null);
       setPitch('');
       alert("Application sent to advocating agent!");

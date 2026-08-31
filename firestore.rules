@@ -1,293 +1,78 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 0. Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Primitive Helpers
-    function isValidId(id) { 
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); 
-    }
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-    function isBot(uid) { return uid is string && uid.matches('^bot_.*'); }
 
-    // Validation Helpers
-    function isValidUser(data) {
-      return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
-             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 150 &&
-             data.email is string && data.email.size() <= 255 &&
-             data.role in ['fighter', 'fan', 'sponsor', 'agent'] &&
-             (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('profileImageUrl', '') is string && data.get('profileImageUrl', '').size() <= 2000) &&
-             (data.get('bio', '') is string && data.get('bio', '').size() <= 2000) &&
-             (data.get('record', '') is string && data.get('record', '').size() <= 100) &&
-             (data.get('gym', '') is string && data.get('gym', '').size() <= 300) &&
-             (data.get('isPro', false) is bool) &&
-             (data.get('socialLinks', {}) is map);
-    }
-
-        function isValidPost(data) {
-      return data.keys().hasAll(['authorId', 'content', 'createdAt']) &&
-             data.authorId is string && (data.authorId == request.auth.uid || isBot(data.authorId)) &&
-             data.content is string && data.content.size() <= 2000 &&
-             (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('category', 'general') in ['highlight', 'result', 'matchup', 'general']) &&
-             (data.get('mediaUrl', '') is string && data.get('mediaUrl', '').size() <= 2500) &&
-             (data.get('mediaType', '') in ['', 'video', 'image']) &&
-             (data.get('likesCount', 0) is number) &&
-             (data.get('likedBy', []) is list) &&
-             (data.get('commentsCount', 0) is number) &&
-             (data.get('reactions', {}) is map);
-    }
-
-    function isValidComment(data) {
-      return data.keys().hasAll(['authorId', 'text', 'createdAt']) &&
-             data.authorId is string && (data.authorId == request.auth.uid || isBot(data.authorId)) &&
-             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    function isValidConnection(data) {
-      return data.keys().hasAll(['users', 'status', 'createdAt']) &&
-             data.users is list && data.users.size() == 2 && data.users[0] is string && data.users[1] is string &&
-             request.auth.uid in data.users &&
-             data.status in ['pending', 'accepted', 'rejected'] &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    function isValidChat(data) {
-      return data.keys().hasAll(['users', 'updatedAt']) &&
-             data.users is list && data.users.size() == 2 && data.users[0] is string && data.users[1] is string &&
-             request.auth.uid in data.users &&
-             (data.updatedAt is timestamp || data.updatedAt is number);
-    }
-
-    function isValidMessage(data) {
-      return data.keys().hasAll(['senderId', 'text', 'createdAt']) &&
-             data.senderId is string && data.senderId == request.auth.uid &&
-             data.text is string && data.text.size() <= 2000 &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    function isValidSponsorshipApplication(data) {
-      return data.keys().hasAll(['fighterId', 'status', 'pitch', 'createdAt']) &&
-             data.fighterId is string && data.fighterId == request.auth.uid &&
-             data.status in ['pending', 'approved', 'rejected'] &&
-             data.pitch is string && data.pitch.size() <= 2000 &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    function isValidContract(data) {
-      return data.keys().hasAll(['fighterId', 'opponent', 'date', 'promotion', 'payout', 'createdAt']) &&
-             data.fighterId is string && data.fighterId == request.auth.uid &&
-             data.opponent is string && data.opponent.size() <= 150 &&
-             data.date is string && data.date.size() <= 100 &&
-             data.promotion is string && data.promotion.size() <= 150 &&
-             data.payout is string && data.payout.size() <= 100 &&
-             (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('contractUrl', '') is string && data.get('contractUrl', '').size() <= 1000);
-    }
-
-    function isValidVideoClip(data) {
-      return data.keys().hasAll(['fighterId', 'videoUrl', 'createdAt']) &&
-             data.fighterId is string && data.fighterId == request.auth.uid &&
-             data.videoUrl is string && data.videoUrl.size() <= 2500 &&
-             (data.createdAt is timestamp || data.createdAt is number) &&
-             (data.get('title', '') is string && data.get('title', '').size() <= 200) &&
-             (data.get('description', '') is string && data.get('description', '').size() <= 2000) &&
-             (data.get('thumbnailUrl', '') is string && data.get('thumbnailUrl', '').size() <= 2500);
-    }
-
-    function isValidTrainingTask(data) {
-      return data.keys().hasAll(['fighterId', 'title', 'completed', 'createdAt']) &&
-             data.fighterId is string && data.fighterId == request.auth.uid &&
-             data.title is string && data.title.size() <= 200 &&
-             data.completed is bool &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    function isValidEvent(data) {
-      return data.keys().hasAll(['submitterId', 'name', 'date', 'time', 'location', 'discipline', 'mainBouts', 'createdAt']) &&
-             data.submitterId is string && data.submitterId == request.auth.uid &&
-             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
-             data.date is string && data.date.size() > 0 && data.date.size() <= 100 &&
-             data.time is string && data.time.size() > 0 && data.time.size() <= 100 &&
-             data.location is string && data.location.size() > 0 && data.location.size() <= 300 &&
-             data.discipline is string && data.discipline.size() > 0 && data.discipline.size() <= 100 &&
-             data.mainBouts is list && data.mainBouts.size() >= 0 && data.mainBouts.size() <= 20 &&
-             (data.mainBouts.size() == 0 || (data.mainBouts[0] is string && data.mainBouts[0].size() <= 200)) &&
-             (data.createdAt is timestamp || data.createdAt is number);
-    }
-
-    // Collections
-    match /contracts/{contractId} {
-      allow get: if isSignedIn() && isValidId(contractId) && (
-        existing().fighterId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['sponsor', 'agent']
-      );
-      allow list: if isSignedIn() && (
-        resource.data.fighterId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['sponsor', 'agent']
-      );
-      allow create: if isSignedIn() && isValidId(contractId) && isValidContract(incoming());
-      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidContract(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['opponent', 'date', 'promotion', 'payout', 'contractUrl']) &&
-                    incoming().fighterId == existing().fighterId &&
-                    incoming().createdAt == existing().createdAt;
-      allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
-    }
-
-    match /videoClips/{clipId} {
-      allow get: if isSignedIn() && isValidId(clipId);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(clipId) && isValidVideoClip(incoming());
-      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidVideoClip(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'thumbnailUrl']) &&
-                    incoming().fighterId == existing().fighterId &&
-                    incoming().videoUrl == existing().videoUrl &&
-                    incoming().createdAt == existing().createdAt;
-      allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
-    }
-
-    match /trainingTasks/{taskId} {
-      allow get: if isSignedIn() && isValidId(taskId) && existing().fighterId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.fighterId == request.auth.uid;
-      allow create: if isSignedIn() && isValidId(taskId) && isValidTrainingTask(incoming());
-      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidTrainingTask(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['completed']) &&
-                    incoming().fighterId == existing().fighterId &&
-                    incoming().title == existing().title &&
-                    incoming().createdAt == existing().createdAt;
-      allow delete: if isSignedIn() && existing().fighterId == request.auth.uid;
-    }
-
-    match /events/{eventId} {
-      allow get: if isSignedIn() && isValidId(eventId);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(eventId) && isValidEvent(incoming());
-      allow update: if isSignedIn() && existing().submitterId == request.auth.uid && isValidEvent(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'date', 'time', 'location', 'discipline', 'mainBouts']) &&
-                    incoming().submitterId == existing().submitterId &&
-                    incoming().createdAt == existing().createdAt;
-      allow delete: if isSignedIn() && existing().submitterId == request.auth.uid;
-    }
-
+    // Users Collection
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && (isOwner(userId) || isBot(userId)) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'profileImageUrl', 'bio', 'record', 'gym', 'isPro', 'createdAt', 'role', 'email', 'socialLinks', 'badges', 'verified']) &&
-                    incoming().email == existing().email &&
-                    incoming().role == existing().role;
-                    
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if isOwner(userId);
+
       match /notifications/{notificationId} {
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create: if isSignedIn() && incoming().keys().hasAll(['type', 'fromUserId', 'createdAt']) &&
-                      incoming().type in ['message', 'like', 'follow'] &&
-                      incoming().fromUserId is string &&
-                      (incoming().createdAt is timestamp || incoming().createdAt is number);
-        allow update: if isSignedIn() && request.auth.uid == userId && 
-                      incoming().diff(existing()).affectedKeys().hasOnly(['read']) &&
-                      incoming().read is bool;
-        allow delete: if isSignedIn() && request.auth.uid == userId;
+        allow read, write: if isSignedIn();
       }
     }
 
+    // Follows Collection
     match /follows/{followId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && incoming().followerId == request.auth.uid &&
-                    incoming().keys().hasAll(['followerId', 'followingId', 'createdAt']) &&
-                    incoming().followerId is string && incoming().followingId is string &&
-                    (incoming().createdAt is timestamp || incoming().createdAt is number);
-      allow delete: if isSignedIn() && existing().followerId == request.auth.uid;
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
+    // Posts Collection & Subcollections
     match /posts/{postId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
-      allow update: if isSignedIn() && (
-                      (
-                        existing().authorId == request.auth.uid && isValidPost(incoming()) &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'category', 'mediaUrl', 'mediaType', 'createdAt']) &&
-                        incoming().authorId == existing().authorId
-                      ) ||
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy']) &&
-                        (incoming().likesCount == existing().get('likesCount', 0) + 1 || incoming().likesCount == existing().get('likesCount', 0) - 1)
-                      ) ||
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount']) &&
-                        (incoming().commentsCount == existing().get('commentsCount', 0) + 1 || incoming().commentsCount == existing().get('commentsCount', 0) - 1)
-                      ) ||
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['reactions']) &&
-                        (
-                          incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) ||
-                          (isSignedIn() && isBot(incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().toRulesList()[0]))
-                        ) &&
-                        (
-                          incoming().reactions.size() >= 0 // basic check
-                        )
-                      ) ||
-                      (
-                        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount', 'likedBy', 'reactions']) &&
-                        (incoming().likesCount == existing().get('likesCount', 0) + 1 || incoming().likesCount == existing().get('likesCount', 0) - 1) &&
-                        (
-                          incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().hasOnly([request.auth.uid]) ||
-                          (isSignedIn() && isBot(incoming().reactions.diff(existing().get('reactions', {})).affectedKeys().toRulesList()[0]))
-                        )
-                      )
-                    );
-      allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
 
       match /comments/{commentId} {
-        allow get: if isSignedIn() && isValidId(commentId);
-        allow list: if isSignedIn();
-        allow create: if isSignedIn() && isValidId(commentId) && isValidComment(incoming());
-        allow delete: if isSignedIn() && existing().authorId == request.auth.uid;
+        allow read: if true;
+        allow create, update, delete: if isSignedIn();
       }
     }
 
+    // Video Clips Collection
+    match /videoClips/{clipId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Training Tasks Collection
+    match /trainingTasks/{taskId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // Contracts Collection
+    match /contracts/{contractId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // Events Collection
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Sponsorship Applications Collection
     match /sponsorships/{applicationId} {
-      allow get: if isSignedIn() && isValidId(applicationId) && (existing().fighterId == request.auth.uid || existing().status == 'pending'); // sponsors might read
-      allow list: if isSignedIn() && resource.data.fighterId == request.auth.uid;
-      allow create: if isSignedIn() && isValidId(applicationId) && isValidSponsorshipApplication(incoming()) && (incoming().createdAt == request.time || (incoming().createdAt is number && incoming().createdAt > 0));
-      // Only updating pitch if pending
-      allow update: if isSignedIn() && existing().fighterId == request.auth.uid && isValidSponsorshipApplication(incoming()) &&
-                    existing().status == 'pending' &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['pitch', 'createdAt']) &&
-                    incoming().fighterId == existing().fighterId &&
-                    incoming().status == existing().status;
+      allow read, create, update, delete: if isSignedIn();
     }
 
+    // Network Connections Collection
     match /connections/{connectionId} {
-      allow get: if isSignedIn() && isValidId(connectionId) && (resource == null || request.auth.uid in existing().users);
-      allow list: if isSignedIn() && (request.auth.uid in resource.data.users || resource.data.status == 'accepted');
-      allow create: if isSignedIn() && isValidId(connectionId) && isValidConnection(incoming()) && incoming().status == 'pending';
-      allow update: if isSignedIn() && request.auth.uid in existing().users && isValidConnection(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                    incoming().users == existing().users &&
-                    incoming().createdAt == existing().createdAt;
+      allow read, create, update, delete: if isSignedIn();
     }
 
+    // Chats & Messages Subcollection
     match /chats/{chatId} {
-      allow get: if isSignedIn() && isValidId(chatId) && (resource == null || request.auth.uid in existing().users);
-      allow list: if isSignedIn() && request.auth.uid in resource.data.users;
-      allow create: if isSignedIn() && isValidId(chatId) && isValidChat(incoming());
-      allow update: if isSignedIn() && request.auth.uid in existing().users && isValidChat(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['updatedAt']) &&
-                    incoming().users == existing().users;
+      allow read, create, update, delete: if isSignedIn();
 
       match /messages/{messageId} {
-        allow get: if isSignedIn() && isValidId(messageId) && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
-        allow list: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
-        allow create: if isSignedIn() && isValidId(messageId) && isValidMessage(incoming()) && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users;
+        allow read, create, update, delete: if isSignedIn();
       }
     }
   }
 }
+

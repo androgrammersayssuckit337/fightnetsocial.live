@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import _ReactPlayer from 'react-player';
 import { VideoRecorder } from '../VideoRecorder';
 import { CameraCapture } from '../CameraCapture';
+import { base44 } from '../../services/base44';
 const ReactPlayer = _ReactPlayer as any;
 
 interface Post {
@@ -173,14 +174,13 @@ export function FeedPage() {
   };
 
   const handleFileUpload = async (file: File) => {
-    if (!currentUser) return;
-    setIsSubmitting(true);
+    if (!currentUser) return '';
     
     let fileExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
     if (!fileExt) {
       if (file.type.startsWith('image/')) fileExt = file.type.replace('image/', '');
       else if (file.type.startsWith('video/')) fileExt = file.type.replace('video/', '');
-      else fileExt = 'bin';
+      else fileExt = 'jpg';
       
       if (fileExt === 'jpeg') fileExt = 'jpg';
       if (fileExt === 'quicktime') fileExt = 'mov';
@@ -205,7 +205,8 @@ export function FeedPage() {
         }, 
         (error) => {
           console.error("Firebase Storage Upload Error:", error);
-          alert(`Upload failed: ${error.message}.`);
+          setUploadProgress(0);
+          alert(`Upload failed: ${error.message}`);
           reject(error);
         }, 
         async () => {
@@ -213,6 +214,7 @@ export function FeedPage() {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
             resolve(downloadURL);
           } catch (err) {
+            setUploadProgress(0);
             reject(err);
           }
         }
@@ -253,6 +255,13 @@ export function FeedPage() {
         mediaUrl,
         mediaType: isVideo ? 'video' : (file ? 'image' : '')
       });
+
+      // Log activity via Base44 API
+      base44.telemetry.log('post_created', currentUser.uid, {
+        category: 'general',
+        hasMedia: Boolean(file),
+        mediaType: isVideo ? 'video' : (file ? 'image' : 'none')
+      });
       
       setNewPostContent('');
       setSelectedFile(null);
@@ -261,6 +270,7 @@ export function FeedPage() {
       if (videoInputRef.current) videoInputRef.current.value = '';
       setUploadProgress(0);
     } catch (error) {
+      setUploadProgress(0);
       handleFirestoreError(error, OperationType.CREATE, 'posts', auth);
     } finally {
       setIsSubmitting(false);
